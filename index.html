@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F2A44">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Grenier">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Grenier – Gestion de coopérative</title>
+<style>
+:root{--sable:#F6EFE2;--papier:#FFFDF8;--encre:#1F2A44;--ocre:#D9952B;--ocre2:#F3DDB0;--mil:#3F6B3A;--mil2:#DDEBD8;--lat:#B5452C;--lat2:#F6DDD5;--gris:#7B7566;--trait:#E5DAC5}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--sable);color:var(--encre);font:16px/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding-bottom:96px}
+.wrap{max-width:720px;margin:0 auto}
+header{background:var(--encre);color:#fff}
+header .in{max-width:720px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:12px}
+header h1{font:700 21px/1.15 Georgia,"Times New Roman",serif;margin:0;flex:1}
+header small{display:block;font:600 11px/1.3 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ocre);margin-bottom:3px}
+.lisiere{height:14px;background-color:var(--ocre);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='14'%3E%3Cpath d='M14 1l7 6-7 6-7-6z' fill='%231F2A44'/%3E%3Cpath d='M14 4.5l3 2.5-3 2.5-3-2.5z' fill='%23F6EFE2'/%3E%3Cpath d='M0 1l3.5 6L0 13zM28 1l-3.5 6 3.5 6z' fill='%23B5452C'/%3E%3C/svg%3E")}
+#back{background:rgba(255,255,255,.12);border:0;color:#fff;font-size:22px;width:42px;height:42px;border-radius:12px;display:none}
+main{padding:16px}
+h2{font:700 12px/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--gris);margin:22px 4px 10px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--papier);border:1px solid var(--trait);border-radius:16px;padding:14px}
+.kpi b{display:block;font:700 24px/1.1 Georgia,serif;margin-top:6px;word-break:break-word}
+.kpi span{font:700 10.5px/1.2 Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--gris)}
+.kpi.dark{background:var(--encre);border-color:var(--encre);color:#fff}.kpi.dark span{color:var(--ocre)}
+.kpi em{display:block;font-style:normal;font-size:12.5px;color:var(--gris);margin-top:4px}.kpi.dark em{color:#C9CEDB}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tile{background:var(--papier);border:1px solid var(--trait);border-radius:16px;padding:12px 4px;text-align:center;font:600 12px/1.2 Arial,sans-serif;color:var(--encre);cursor:pointer}
+.tile i{display:block;font-style:normal;font-size:26px;margin-bottom:6px}
+.card{background:var(--papier);border:1px solid var(--trait);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--trait)}
+.row:last-child{border-bottom:0}
+.row .g{flex:1;min-width:0}
+.row .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13px;color:var(--gris)}
+.row .m{font:700 16px Georgia,serif;text-align:right;white-space:nowrap}
+.row .m small{display:block;font:600 11px Arial,sans-serif;color:var(--gris)}
+.row[data-a]{cursor:pointer}
+.row.wr{flex-wrap:wrap}.row.wr .g{flex-basis:100%}.row.wr .m{text-align:left;margin-right:auto}
+.av{width:40px;height:40px;border-radius:50%;background:var(--ocre2);display:grid;place-items:center;font:700 12px Arial,sans-serif;flex:none}
+.tag{display:inline-block;font:700 10.5px/1 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:99px}
+.ok{background:var(--mil2);color:var(--mil)}.ko{background:var(--lat2);color:var(--lat)}.mid{background:var(--ocre2);color:#7A4D05}
+.pos{color:var(--mil)}.neg{color:var(--lat)}
+.alert{display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--trait);cursor:pointer}
+.alert:last-child{border:0}.alert i{font-style:normal;width:10px;height:10px;border-radius:50%;background:var(--lat);flex:none}.alert.w i{background:var(--ocre)}
+.btn{border:0;border-radius:14px;padding:14px 16px;font:700 15px Arial,sans-serif;background:var(--ocre);color:var(--encre);cursor:pointer}
+.btn.sec{background:var(--papier);border:1.5px solid var(--encre)}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
+.btn.dan{background:var(--lat2);color:var(--lat)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.btns .btn{flex:1}
+.x{background:none;border:0;color:var(--gris);font-size:13px;padding:6px 8px;cursor:pointer;border-radius:8px}
+.x.sure{background:var(--lat);color:#fff}
+.empty{padding:28px 16px;text-align:center;color:var(--gris)}
+input,select{width:100%;font:16px Arial,sans-serif;padding:13px 12px;border:1.5px solid var(--trait);border-radius:12px;background:#fff;color:var(--encre)}
+input:focus,select:focus{outline:0;border-color:var(--ocre)}
+label{display:block;font:700 11px Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin:14px 2px 6px}
+.search{margin-bottom:12px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--papier);border-top:1px solid var(--trait);padding-bottom:env(safe-area-inset-bottom)}
+nav .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:end}
+nav button{background:none;border:0;padding:9px 0 10px;font:600 11px Arial,sans-serif;color:var(--gris);cursor:pointer}
+nav button i{display:block;font-style:normal;font-size:21px;margin-bottom:2px}
+nav button.on{color:var(--encre)}
+nav .plus{margin:-26px auto 8px;width:62px;height:62px;border-radius:50%;background:var(--ocre);color:var(--encre);font-size:34px;line-height:1;box-shadow:0 6px 16px rgba(31,42,68,.3);border:4px solid var(--sable);padding:0}
+#veil{position:fixed;inset:0;background:rgba(31,42,68,.55);display:none;align-items:flex-end;justify-content:center;z-index:9}
+#veil.on{display:flex}
+#sheet{background:var(--sable);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:8px 18px 24px}
+#sheet h3{font:700 20px Georgia,serif;margin:14px 0 4px}
+.grab{width:44px;height:5px;border-radius:9px;background:var(--trait);margin:6px auto}
+.prev{background:var(--encre);color:#fff;border-radius:14px;padding:12px 14px;margin-top:14px;font:700 18px Georgia,serif}
+.prev small{display:block;font:600 11px Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)}
+.err{color:var(--lat);font-weight:600;margin-top:10px;min-height:20px}
+#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:var(--encre);color:#fff;padding:11px 18px;border-radius:99px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:20;white-space:nowrap}
+#toast.on{opacity:1}
+.demo{background:var(--ocre2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px}
+.demo .btn{margin-top:8px}
+.bar{height:8px;border-radius:9px;background:var(--trait);overflow:hidden;margin-top:6px}.bar div{height:100%;background:var(--mil)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px}
+.pgrid input{padding:10px 8px;font-size:14px}
+.sign{display:none}
+body.bloque nav,body.bloque #back{display:none!important}
+.lic{background:var(--encre);color:#fff;border-radius:16px;padding:16px}.lic b{font:700 20px Georgia,serif}.lic .k{font:700 15px monospace;letter-spacing:.06em;color:var(--ocre)}
+.cond{font-size:13.5px;line-height:1.55;color:#3b3a36}.cond li{margin-bottom:6px}
+#lock{position:fixed;inset:0;background:var(--encre);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center}
+#lock h3{font:700 24px Georgia,serif;margin:0 0 4px}#lock p{color:var(--ocre);font:700 11px Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 22px}
+#lock form{width:100%;max-width:300px}#lock input{text-align:center;font-size:26px;letter-spacing:.4em;margin-bottom:12px}#lock .btn{width:100%}#lock .err{color:#F3B8A8}
+.exp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fac{background:#fff;border:1px solid var(--trait);border-radius:16px;padding:22px 18px}
+.fac .top{display:flex;justify-content:space-between;gap:14px;border-bottom:3px solid var(--ocre);padding-bottom:14px}
+.fac .co{font:700 19px/1.2 Georgia,serif}.fac .sm{font-size:12.5px;color:var(--gris);line-height:1.5}
+.fac .ft{text-align:right;flex:none}.fac .ft b{display:block;font:700 22px Georgia,serif;letter-spacing:.08em}
+.fac .cl{background:var(--sable);border-radius:12px;padding:12px 14px;margin:16px 0}
+.fac .lb{font:700 10.5px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--gris)}
+.fac table{width:100%;border-collapse:collapse;font-size:14px}
+.fac th{background:var(--encre);color:#fff;font:700 10.5px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:9px 8px;text-align:right}
+.fac th:first-child,.fac td:first-child{text-align:left}
+.fac td{padding:11px 8px;border-bottom:1px solid var(--trait);text-align:right}
+.fac .tot td{border:0;padding:6px 8px}.fac .tot .big td{font:700 18px Georgia,serif;border-top:2px solid var(--encre);padding-top:10px}
+.fac .let{margin:16px 0 0;font-size:13.5px}
+.fac .pay{background:var(--sable);border-radius:12px;padding:12px 14px;margin-top:16px}.fac .pay .pl{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;padding:6px 0;border-top:1px solid var(--trait);font-size:14px}.fac .pay .pl:first-of-type{border-top:0}.fac .pay .pl span:last-child{font-weight:700;text-align:right;margin-left:auto;overflow-wrap:anywhere;cursor:pointer}
+.fac .sg{display:flex;justify-content:space-between;margin-top:34px;font-size:13px;color:var(--gris)}.fac .sg div{height:70px}
+@media print{nav,#back,.btns,.x,.noprint{display:none!important}body{background:#fff;padding:0}body.pf header{display:none}body.pf main{padding:0}.fac{border:0;padding:0}.fac th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.fac .cl{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sign{display:flex;justify-content:space-between;margin-top:50px;font-size:13px}}
+</style>
+</head>
+<body>
+<header><div class="in"><button id="back" data-a="back" aria-label="Retour">‹</button><h1><small id="hsub"></small><span id="htitle"></span></h1></div><div class="lisiere"></div></header>
+<main class="wrap" id="app"></main>
+<nav><div class="in">
+<button data-a="go:home" data-n="home"><i>🏠</i>Accueil</button>
+<button data-a="go:membres" data-n="membres"><i>👥</i>Membres</button>
+<button class="plus" data-a="quick" aria-label="Nouvelle saisie">+</button>
+<button data-a="go:caisse" data-n="caisse"><i>💰</i>Caisse</button>
+<button data-a="go:params" data-n="params"><i>⚙️</i>Réglages</button>
+</div></nav>
+<div id="veil"><div id="sheet"></div></div>
+<div id="toast"></div>
+<script>
+"use strict";
+const KEY='grenier_coop_v1';
+const MODES={'Espèces':'Caisse','Wave':'Mobile money','Orange Money':'Mobile money','Chèque':'Banque','Virement':'Banque','Carte Visa':'Banque'};
+const COMPTES=['Caisse','Banque','Mobile money'];
+const INTRANTS=['Semences arachide','Semences céréales','Engrais NPK','Urée','Produits phytosanitaires','Petit matériel','Autre'];
+const FONCTIONS=['Membre','Président(e)','Vice-président(e)','Secrétaire','Trésorier(ère)','Commissaire aux comptes'];
+const $=s=>document.querySelector(s);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nb=n=>Math.round(+n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const dec=n=>{n=Math.round((+n||0)*10)/10;const e=Math.trunc(n),d=Math.round(Math.abs(n-e)*10);return (n<0&&e===0?'-':'')+nb(e)+(d?','+d:'')};
+const num=x=>+String(x==null?'':x).replace(/\s/g,'').replace(',','.')||0;
+const F=n=>nb(n)+'\u00a0F', KG=n=>dec(n)+'\u00a0kg';
+const D=d=>d?d.split('-').reverse().join('/'):'';
+const sum=(a,f)=>a.reduce((t,x)=>t+(+f(x)||0),0);
+let S, view='home', arg=null, mem=false;
+
+function empty(){return {params:{nom:'Ma coopérative',tauxCredit:0,code:'',adresse:'',tel:'',ninea:'',wave:'',om:'',free:'',banque:'',rib:'',waveLink:'',campagne:'2026-2027',part:5000,tare:0.5,
+ produits:[{n:'Arachide coque',prix:305,seuil:1000},{n:'Mil',prix:250,seuil:500},{n:'Maïs',prix:225,seuil:300},{n:'Niébé',prix:400,seuil:200}],
+ init:{'Caisse':0,'Banque':0,'Mobile money':0}},seq:0,seqF:0,demo:false,
+ membres:[],parts:[],pesees:[],paiements:[],credits:[],rembs:[],ventes:[],encs:[],ops:[],ajust:[],emprunts:[],rembE:[],del:{}}}
+function demo(){const s=empty();s.demo=true;
+ s.params.nom='Coopérative Ndimbal (exemple)';s.params.tauxCredit=10;s.params.adresse='Ndimbal, commune de Kaffrine';s.params.tel='77 000 00 00';s.params.wave='77 000 00 00';s.params.om='78 000 00 00';s.params.banque='Banque agricole (exemple)';s.params.rib='SN000 00000 000000000000 00';s.params.init={'Caisse':500000,'Banque':1200000,'Mobile money':1000000};
+ s.params.produits.push({n:'Sésame',prix:600,seuil:100});
+ [['Awa Ndiaye','F','Ndimbal','77 123 45 67','Président(e)',4],['Moussa Diop','H','Ndimbal','76 234 56 78','Trésorier(ère)',4],['Fatou Sarr','F','Keur Mbouki','78 345 67 89','Secrétaire',2],['Ibrahima Ba','H','Keur Mbouki','77 456 78 90','Membre',2],['Aminata Faye','F','Gniby','70 567 89 01','Membre',1],['Cheikh Gueye','H','Gniby','77 678 90 12','Membre',3],['Mariama Cissé','F','Ndimbal','76 789 01 23','Membre',1],['Ousmane Sow','H','Boulel','78 890 12 34','Membre',2]]
+ .forEach(m=>s.membres.push({id:'M'+String(++s.seq).padStart(3,'0'),nom:m[0],sexe:m[1],village:m[2],tel:m[3],fonction:m[4],date:'2024-03-12',parts:m[5]}));
+ [['M001',20000,'Espèces'],['M002',20000,'Wave'],['M003',10000,'Espèces'],['M004',5000,'Orange Money'],['M005',5000,'Espèces'],['M006',15000,'Wave'],['M008',10000,'Espèces']]
+ .forEach(p=>s.parts.push({id:uid(),date:'2026-03-12',m:p[0],montant:p[1],mode:p[2]}));
+ const pz=(d,m,pr,sacs,brut)=>{const p=s.params.produits.find(x=>x.n===pr),net=Math.max(0,brut-sacs*s.params.tare);s.pesees.push({id:uid(),date:d,m,produit:pr,sacs,brut,net,prix:p.prix,montant:Math.round(net*p.prix)})};
+ pz('2026-11-02','M001','Arachide coque',20,810);pz('2026-11-02','M002','Arachide coque',30,1215);pz('2026-11-03','M003','Mil',10,505);pz('2026-11-03','M004','Arachide coque',15,600);pz('2026-11-04','M005','Niébé',6,303);pz('2026-11-05','M006','Arachide coque',40,1620);pz('2026-11-06','M007','Maïs',12,606);pz('2026-11-07','M008','Arachide coque',25,1010);pz('2026-11-10','M003','Sésame',4,202);
+ [['2026-11-05','M001',240000,'Wave'],['2026-11-05','M002',365000,'Orange Money'],['2026-11-06','M003',125000,'Espèces'],['2026-11-08','M006',300000,'Wave'],['2026-11-10','M004',180000,'Espèces']]
+ .forEach(p=>s.paiements.push({id:uid(),date:p[0],m:p[1],montant:p[2],mode:p[3]}));
+ const c1=uid(),c2=uid(),c3=uid();
+ s.credits.push({id:c1,date:'2026-06-10',m:'M004',intrant:'Semences arachide',qte:100,pu:450,montant:45000,taux:10,interet:4500,du:49500,echeance:'2026-12-31'},
+  {id:c2,date:'2026-06-10',m:'M005',intrant:'Engrais NPK',qte:2,pu:13000,montant:26000,echeance:'2026-12-31'},
+  {id:c3,date:'2026-06-12',m:'M007',intrant:'Semences céréales',qte:20,pu:600,montant:12000,echeance:'2026-10-31'});
+ s.rembs.push({id:uid(),date:'2026-11-10',c:c1,montant:20000,mode:'Espèces'},{id:uid(),date:'2026-11-10',c:c2,montant:26000,mode:'Espèces'});
+ const v1=uid(),v2=uid(),v3=uid();
+ s.ventes.push({id:v1,date:'2026-11-08',client:'Huilerie de Kaolack',produit:'Arachide coque',qte:2500,pu:340,montant:850000},
+  {id:v2,date:'2026-11-12',client:'Agro Export Dakar',produit:'Arachide coque',qte:1800,pu:360,montant:648000},
+  {id:v3,date:'2026-11-14',client:'Transfo Céréales',produit:'Mil',qte:300,pu:280,montant:84000});
+ s.encs.push({id:uid(),date:'2026-11-09',v:v1,montant:850000,mode:'Virement'},{id:uid(),date:'2026-11-13',v:v2,montant:400000,mode:'Chèque'});
+ s.ops.push({id:uid(),date:'2026-10-28',lib:'Achat de 300 sacs vides',sens:'Sortie',montant:60000,compte:'Caisse'},
+  {id:uid(),date:'2026-11-01',lib:'Location du magasin',sens:'Sortie',montant:25000,compte:'Caisse'},
+  {id:uid(),date:'2026-11-09',lib:'Transport vers Kaolack',sens:'Sortie',montant:120000,compte:'Banque'},
+  {id:uid(),date:'2026-07-01',lib:'Appui projet partenaire',sens:'Entrée',montant:500000,compte:'Banque'});
+ return s}
+function numeros(){S.params=Object.assign(empty().params,S.params);S.ventes.forEach(v=>{if(!v.lignes)v.lignes=[{produit:v.produit,qte:v.qte,pu:v.pu,montant:v.montant}]});S.ventes.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(v=>{if(!v.num){const n=nextNum(new RegExp('^F-\\d{4}-'+pfx()+'(\\d+)$'),S.ventes.map(x=>x.num));v.num='F-'+v.date.slice(0,4)+'-'+pfx()+String(n).padStart(3,'0')}})}
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=Object.assign(empty(),JSON.parse(r));numeros();snap();return}}catch(e){mem=true}S=demo();numeros();snap()}
+const U=['','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'],T=['','','vingt','trente','quarante','cinquante','soixante','soixante','quatre-vingt','quatre-vingt'];
+function s100(n){if(n<20)return U[n];const t=Math.floor(n/10),u=n%10;if(t===7||t===9)return T[t]+(t===7&&u===1?' et ':'-')+U[10+u];if(u===0)return T[t]+(t===8?'s':'');if(u===1&&t!==8)return T[t]+' et un';return T[t]+'-'+U[u]}
+function s1000(n){const c=Math.floor(n/100),r=n%100;let s='';if(c)s=(c>1?U[c]+' ':'')+'cent'+(c>1&&!r?'s':'');if(r)s+=(s?' ':'')+s100(r);return s}
+function lettres(n){n=Math.round(n);if(!n)return 'zéro';const out=[],md=Math.floor(n/1e9),ml=Math.floor(n%1e9/1e6),k=Math.floor(n%1e6/1e3),r=n%1e3;
+ if(md)out.push(s1000(md)+' milliard'+(md>1?'s':''));if(ml)out.push(s1000(ml)+' million'+(ml>1?'s':''));
+ if(k)out.push((k>1?s1000(k).replace(/(cent|vingt)s$/,'$1')+' ':'')+'mille');if(r)out.push(s1000(r));return out.join(' ')}
+const COLL=['membres','parts','pesees','paiements','credits','rembs','ventes','encs','ops','ajust','emprunts','rembE'];
+let HS={};
+function snap(){HS={};COLL.forEach(c=>(S[c]||[]).forEach(r=>{const o=Object.assign({},r);delete o.maj;HS[c+':'+r.id]=JSON.stringify(o)}))}
+function stamp(){const t=Date.now();COLL.forEach(c=>(S[c]||[]).forEach(r=>{const o=Object.assign({},r);delete o.maj;const j=JSON.stringify(o),k=c+':'+r.id;if(HS[k]!==j){r.maj=t;HS[k]=j}}))}
+const APPS='ABCDEFGHIJ';
+function app(){try{return localStorage.getItem('grenier_appareil')||'A'}catch(e){return 'A'}}
+const pfx=()=>app()==='A'?'':app();
+function nextNum(re,list){let n=0;list.forEach(x=>{const m=re.exec(x||'');if(m)n=Math.max(n,+m[1])});return n+1}
+function tomb(...ids){S.del=S.del||{};const t=Date.now();ids.forEach(i=>S.del[i]=t)}
+function fusion(inc){let add=0,upd=0,rm=0;const del=Object.assign({},inc.del||{},S.del||{});S.del=del;
+ COLL.forEach(c=>{const loc=S[c]||[],idx={};loc.forEach((r,i)=>idx[r.id]=i);
+  (inc[c]||[]).forEach(r=>{if(del[r.id])return;const i=idx[r.id];if(i==null){loc.push(r);idx[r.id]=loc.length-1;add++}else if((+r.maj||0)>(+loc[i].maj||0)){loc[i]=r;upd++}});
+  const n0=loc.length;S[c]=loc.filter(r=>!del[r.id]);rm+=n0-S[c].length});
+ ((inc.params||{}).produits||[]).forEach(p=>{if(!S.params.produits.some(x=>x.n===p.n)){S.params.produits.push(p);add++}});
+ numeros();snap();save();return {add,upd,rm}}
+function save(){stamp();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){mem=true}}
+
+/* ---------- calculs ---------- */
+const M=id=>S.membres.find(m=>m.id===id)||{nom:'?',id};
+const credDu=c=>+c.du||c.montant;
+const credReste=c=>Math.max(0,credDu(c)-sum(S.rembs.filter(r=>r.c===c.id),r=>r.montant));
+const empReste=e=>Math.max(0,(+e.du||e.montant)-sum(S.rembE.filter(r=>r.e===e.id),r=>r.montant));
+const venteReste=v=>Math.max(0,v.montant-sum(S.encs.filter(e=>e.v===v.id),e=>e.montant));
+function mstat(m){const sous=m.parts*S.params.part,lib=sum(S.parts.filter(p=>p.m===m.id),p=>p.montant),
+ pz=S.pesees.filter(p=>p.m===m.id),kg=sum(pz,p=>p.net),val=sum(pz,p=>p.montant),paye=sum(S.paiements.filter(p=>p.m===m.id),p=>p.montant),
+ cred=sum(S.credits.filter(c=>c.m===m.id),credReste);
+ return {sous,lib,resteParts:Math.max(0,sous-lib),kg,val,paye,du:val-paye,cred}}
+function stock(){return S.params.produits.map(p=>{const e=sum(S.pesees.filter(x=>x.produit===p.n),x=>x.net),s=sum(S.ventes,v=>sum(v.lignes.filter(l=>l.produit===p.n),l=>l.qte)),aj=S.ajust.filter(x=>x.produit===p.n),ai=sum(aj.filter(x=>x.sens==='Entrée'),x=>x.qte),ao=sum(aj.filter(x=>x.sens!=='Entrée'),x=>x.qte),q=Math.round((e+ai-s-ao)*10)/10;
+ return {n:p.n,e,s,ai,ao,q,seuil:p.seuil,bas:(e+ai)>0&&q<p.seuil,neg:q<0}})}
+function mouvements(){const L=[];
+ S.parts.forEach(x=>L.push({d:x.date,l:'Part sociale · '+M(x.m).nom,c:MODES[x.mode],e:x.montant}));
+ S.encs.forEach(x=>{const v=S.ventes.find(v=>v.id===x.v);L.push({d:x.date,l:'Vente · '+(v?v.client:''),c:MODES[x.mode],e:x.montant})});
+ S.rembs.forEach(x=>{const c=S.credits.find(c=>c.id===x.c);L.push({d:x.date,l:'Remb. crédit · '+(c?M(c.m).nom:''),c:MODES[x.mode],e:x.montant})});
+ S.paiements.forEach(x=>L.push({d:x.date,l:'Paiement · '+M(x.m).nom,c:MODES[x.mode],s:x.montant}));
+ S.emprunts.forEach(x=>L.push({d:x.date,l:'Emprunt reçu · '+x.preteur,c:x.compte,e:x.montant}));
+ S.rembE.forEach(x=>{const e=S.emprunts.find(e=>e.id===x.e);L.push({d:x.date,l:'Remb. emprunt · '+(e?e.preteur:''),c:x.compte,s:x.montant})});
+ S.ops.forEach(x=>L.push({d:x.date,l:x.lib,c:x.compte,[x.sens==='Entrée'?'e':'s']:x.montant,op:x.id}));
+ return L.sort((a,b)=>a.d<b.d?1:-1)}
+function soldes(){const o={};COMPTES.forEach(c=>o[c]=+S.params.init[c]||0);mouvements().forEach(m=>{if(o[m.c]==null)o[m.c]=0;o[m.c]+=(m.e||0)-(m.s||0)});return o}
+
+/* ---------- formulaires ---------- */
+const oMembres=()=>S.membres.map(m=>[m.id,m.id+' · '+m.nom]);
+const oProd=()=>S.params.produits.map(p=>[p.n,p.n]);
+const oModes=()=>Object.keys(MODES).map(m=>[m,m]);
+const FORMS={
+ membre:{t:'Membre',f:[{n:'nom',l:'Prénom et nom'},{n:'sexe',l:'Sexe',o:()=>[['F','Femme'],['H','Homme']]},{n:'village',l:'Village',opt:1},{n:'tel',l:'Téléphone',type:'tel',opt:1},{n:'cni',l:'N° CNI (facultatif)',opt:1},{n:'fonction',l:'Fonction',o:()=>FONCTIONS.map(x=>[x,x])},{n:'parts',l:'Parts souscrites (nombre)',type:'number',zero:1},{n:'date',l:"Date d'adhésion",type:'date'}],
+  prev:v=>['Montant souscrit',F((+v.parts||0)*S.params.part)],
+  save(v,id){if(id){Object.assign(M(id),v)}else{v.id='M'+pfx()+String(nextNum(new RegExp('^M'+pfx()+'(\\d+)$'),S.membres.map(x=>x.id))).padStart(3,'0');S.membres.push(v);arg=v.id;view='fiche'}}},
+ pesee:{t:'Nouvelle pesée',f:[{n:'m',l:'Membre',o:oMembres},{n:'produit',l:'Produit',o:oProd},{n:'sacs',l:'Nombre de sacs pesés',type:'number',zero:1},{n:'brut',l:'Poids brut total lu sur la bascule (kg)',type:'number'},{n:'prix',l:"Prix d'achat (F/kg)",type:'number'},{n:'date',l:'Date',type:'date'}],
+  calc(v){const tare=Math.round((+v.sacs||0)*S.params.tare*10)/10,net=Math.max(0,Math.round(((+v.brut||0)-tare)*10)/10),prix=+v.prix||0;return {tare,net,prix,montant:Math.round(net*prix)}},
+  prev(v){const c=this.calc(v);return [dec(+v.brut||0)+' kg brut − '+dec(c.tare)+' kg de tare ('+(+v.sacs||0)+' sacs × '+dec(S.params.tare)+' kg) = '+dec(c.net)+' kg net × '+nb(c.prix)+' F',F(c.montant)]},
+  save(v,id){const o=Object.assign(v,this.calc(v));if(id)Object.assign(S.pesees.find(x=>x.id===id),o);else S.pesees.push(Object.assign({id:uid()},o))}},
+ paiement:{t:'Payer un producteur',f:[{n:'m',l:'Membre',o:oMembres},{n:'montant',l:'Montant payé (FCFA)',type:'number'},{n:'mode',l:'Mode de paiement',o:oModes},{n:'carte',l:'Carte Visa : 4 derniers chiffres (si paiement par carte)',opt:1},{n:'ref',l:'Référence de la transaction (facultatif)',opt:1},{n:'date',l:'Date',type:'date'}],
+  prev(v){const m=S.membres.find(x=>x.id===v.m);return m?['Reste à payer à '+m.nom+(m.tel?' · Tél. '+m.tel:''),F(mstat(m).du)]:null},
+  save(v){const d=String(v.carte||'').replace(/\D/g,'');v.carte=v.mode==='Carte Visa'&&d?d.slice(-4):'';if(!v.ref)delete v.ref;if(!v.carte)delete v.carte;S.paiements.push(Object.assign({id:uid()},v))}},
+ part:{t:'Versement de part sociale',f:[{n:'m',l:'Membre',o:oMembres},{n:'montant',l:'Montant versé (FCFA)',type:'number'},{n:'mode',l:'Mode de paiement',o:oModes},{n:'date',l:'Date',type:'date'}],
+  prev(v){const m=S.membres.find(x=>x.id===v.m);return m?['Reste à libérer',F(mstat(m).resteParts)]:null},
+  save(v){S.parts.push(Object.assign({id:uid()},v))}},
+ credit:{t:'Intrants à crédit',f:[{n:'m',l:'Membre',o:oMembres},{n:'intrant',l:'Intrant',o:()=>INTRANTS.map(x=>[x,x])},{n:'qte',l:'Quantité',type:'number'},{n:'pu',l:'Prix unitaire (FCFA)',type:'number'},{n:'taux',l:"Taux d'intérêt (%)",type:'number',zero:1},{n:'echeance',l:'Échéance de remboursement',type:'date'},{n:'date',l:'Date de cession',type:'date'}],
+  calc(v){const m=Math.round((+v.qte||0)*(+v.pu||0)),t=+v.taux||0,i=Math.round(m*t/100);return {montant:m,interet:i,du:m+i}},
+  prev(v){const c=this.calc(v);return ['Intrant '+F(c.montant)+' + intérêts '+dec(+v.taux||0)+' % ('+F(c.interet)+') = total à rembourser',F(c.du)]},
+  save(v){Object.assign(v,this.calc(v));S.credits.push(Object.assign({id:uid()},v))}},
+ remb:{t:'Remboursement de crédit',f:[{n:'montant',l:'Montant remboursé (FCFA)',type:'number'},{n:'mode',l:'Mode de paiement',o:oModes},{n:'date',l:'Date',type:'date'}],
+  save(v,id){S.rembs.push(Object.assign({id:uid(),c:id},v))}},
+ vente:{t:'Nouvelle vente',f:[{n:'client',l:'Client / acheteur'},{n:'contact',l:'Adresse ou téléphone du client',opt:1},{n:'produit',l:'Produit',o:oProd},{n:'qte',l:'Quantité (kg)',type:'number'},{n:'pu',l:'Prix de vente (FCFA/kg)',type:'number'},{n:'date',l:'Date',type:'date'}],
+  prev(v){const st=stock().find(x=>x.n===v.produit);return ['Montant · stock disponible '+KG(st?st.q:0),F((+v.qte||0)*(+v.pu||0))]},
+  save(v){v.montant=Math.round(v.qte*v.pu);const o=Object.assign({id:uid()},v);S.ventes.push(o);numeros();arg=o.id;view='facture'}},
+ enc:{t:'Encaissement client',f:[{n:'montant',l:'Montant encaissé (FCFA)',type:'number'},{n:'mode',l:"Mode d'encaissement",o:oModes},{n:'date',l:'Date',type:'date'}],
+  save(v,id){S.encs.push(Object.assign({id:uid(),v:id},v))}},
+ ajust:{t:'Ajuster le stock',f:[{n:'produit',l:'Produit',o:oProd},{n:'sens',l:'Opération',o:()=>[['Entrée','Ajouter au stock (stock de départ, achat, don)'],['Sortie','Retirer du stock (perte, avarie, don)']]},{n:'qte',l:'Quantité (kg)',type:'number'},{n:'motif',l:'Motif',opt:1},{n:'date',l:'Date',type:'date'}],
+  prev(v){const st=stock().find(x=>x.n===v.produit);if(!st)return null;const q=st.q+(v.sens==='Entrée'?1:-1)*(+v.qte||0);return ['Stock actuel '+KG(st.q)+' → nouveau stock',KG(q)]},
+  save(v){S.ajust.push(Object.assign({id:uid()},v))}},
+ emprunt:{t:'Emprunt de la coopérative',f:[{n:'preteur',l:'Prêteur (banque, entreprise, partenaire)'},{n:'montant',l:'Montant reçu (FCFA)',type:'number'},{n:'du',l:'Total à rembourser, intérêts compris (FCFA)',type:'number',opt:1},{n:'compte',l:"Compte où l'argent est reçu",o:()=>['Banque','Caisse','Mobile money'].map(c=>[c,c])},{n:'echeance',l:'Échéance de remboursement',type:'date'},{n:'objet',l:'Objet (ex. achat intrants, campagne de collecte)',opt:1},{n:'date',l:"Date de l'emprunt",type:'date'}],
+  prev(v){const m=+v.montant||0,d=+v.du||m;return ['Intérêts et frais',F(Math.max(0,d-m))]},
+  save(v){if(v.du===''||v.du<v.montant)v.du=v.montant;S.emprunts.push(Object.assign({id:uid()},v))}},
+ rembE:{t:"Remboursement d'emprunt",f:[{n:'montant',l:'Montant remboursé (FCFA)',type:'number'},{n:'compte',l:'Payé depuis le compte',o:()=>['Banque','Caisse','Mobile money'].map(c=>[c,c])},{n:'date',l:'Date',type:'date'}],
+  save(v,id){S.rembE.push(Object.assign({id:uid(),e:id},v))}},
+ op:{t:'Autre recette ou dépense',f:[{n:'sens',l:'Type',o:()=>[['Sortie','Dépense (sortie)'],['Entrée','Recette (entrée)']]},{n:'lib',l:'Libellé (ex. transport, sacs, subvention)'},{n:'montant',l:'Montant (FCFA)',type:'number'},{n:'compte',l:'Compte',o:()=>COMPTES.map(c=>[c,c])},{n:'date',l:'Date',type:'date'}],
+  save(v){S.ops.push(Object.assign({id:uid()},v))}}
+};
+function payLines(){const p=S.params,L=[];if(p.wave)L.push(['Wave',p.wave]);if(p.om)L.push(['Orange Money',p.om]);if(p.free)L.push(['Free Money',p.free]);
+ if(p.rib)L.push(['Virement'+(p.banque?' · '+p.banque:''),'RIB '+p.rib]);else if(p.banque)L.push(['Banque',p.banque]);return L}
+function telSN(t){let d=String(t||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(/^[37]\d{8}$/.test(d))return '221'+d;if(/^221[37]\d{8}$/.test(d))return d;return d.length>=8?d:''}
+const cliTel=v=>v.ctel||(/(\+?\d[\d\s.-]{7,})/.exec(v.contact||'')||[''])[0];
+function withAmt(u,a){try{const x=new URL(u);a=Math.round(a);if(/(^|\.)wave\.com$/i.test(x.hostname)&&a>0){x.searchParams.set('amount',String(a));return x.toString()}}catch(e){}return u}
+const vLink=v=>{const b=okLink(v.lien)?v.lien:okLink(S.params.waveLink)?S.params.waveLink:'';return b?withAmt(b,venteReste(v)):''};
+function smsHref(v){return 'sms:+'+telSN(cliTel(v))+'?&body='+encodeURIComponent(demTxt(v).replace(/\*/g,''))}
+function demTxt(v){const r=venteReste(v),p=S.params,l=vLink(v),L=['Bonjour '+v.client+',','',p.nom+' vous demande le règlement de la facture N° '+v.num+' du '+D(v.date)+'.','*Montant à payer : '+F(r)+'*',''];
+ if(l)L.push('👉 Payez en un clic avec Wave (le montant s\'affiche, vous confirmez avec votre code) :',l,'');
+ const alt=[];if(p.wave)alt.push('Wave au '+p.wave);if(p.om)alt.push('Orange Money au '+p.om);if(p.free)alt.push('Free Money au '+p.free);
+ if(alt.length)L.push((l?'Ou envoyez ':'Envoyez ')+F(r)+' par '+alt.join(', ou ')+', en indiquant la référence '+v.num+'.');
+ if(p.rib)L.push('Virement : '+(p.banque?p.banque+' – ':'')+'RIB '+p.rib);
+ L.push('','Merci de nous confirmer votre paiement.');return L.join('\n').replace(/\u00a0/g,' ')}
+const okLink=u=>/^https:\/\/[^\s"'<>]+$/.test(u||'');
+function facTxt(v){const r=venteReste(v),p=S.params,L=['*FACTURE N° '+v.num+'*',p.nom,[p.adresse,p.tel?'Tél. '+p.tel:''].filter(Boolean).join(' · '),'','Date : '+D(v.date),'Client : '+v.client,''].concat(v.lignes.map(l=>l.produit+' : '+KG(l.qte)+' × '+F(l.pu)+' = '+F(l.montant)),['*Total : '+F(v.montant)+'*','Déjà réglé : '+F(v.montant-r),'Reste à payer : '+F(r)]).concat(payLines().length?['','*Pour payer :*'].concat(payLines().map(x=>x[0]+' : '+x[1])).concat(vLink(v)?['Payer avec Wave : '+vLink(v)]:[]):[]);
+ return L.join('\n').replace(/\u00a0/g,' ').replace(/\n\n\n/g,'\n\n')}
+function facImg(v){const W=1240,H=1420,dy=(v.lignes.length-1)*58,PL=payLines(),PLL=PL.map(l=>(l[0].length+l[1].length)>48?2:1),ex=PL.length?sum(PLL,x=>x)*40+110:0,c=document.createElement('canvas');c.width=W;c.height=H+dy+ex;const x=c.getContext('2d'),p=S.params,r=venteReste(v),A=80,R=W-80,G='#7B7566',E='#1F2A44';
+ const t=(s,X,Y,f,col,al,mw)=>{x.font=f;x.fillStyle=col||E;x.textAlign=al||'left';mw?x.fillText(s,X,Y,mw):x.fillText(s,X,Y)};
+ x.fillStyle='#fff';x.fillRect(0,0,W,H+dy+ex);
+ t(p.nom,A,130,'bold 42px Georgia',E,'left',700);let y=176;[p.adresse,p.tel?'Tél. '+p.tel:'',p.ninea?'NINEA / N° immat. : '+p.ninea:''].filter(Boolean).forEach(l=>{t(l,A,y,'25px Arial',G,'left',700);y+=36});
+ t('FACTURE',R,130,'bold 50px Georgia',E,'right');t('N° '+v.num,R,176,'25px Arial',G,'right');t('Date : '+D(v.date),R,212,'25px Arial',G,'right');
+ x.fillStyle='#D9952B';x.fillRect(A,290,W-160,6);
+ x.fillStyle='#F6EFE2';x.fillRect(A,330,W-160,150);t('FACTURÉ À',A+30,374,'bold 19px Arial',G);t(v.client,A+30,420,'bold 34px Arial',E,'left',W-220);t([cliTel(v)?'Tél. '+cliTel(v):'',v.contact&&v.contact!==cliTel(v)?v.contact:''].filter(Boolean).join(' · '),A+30,458,'24px Arial',G,'left',W-220);
+ x.fillStyle=E;x.fillRect(A,520,W-160,60);[['DÉSIGNATION',A+20,'left'],['QUANTITÉ',760,'right'],['PRIX UNITAIRE',960,'right'],['MONTANT',R-20,'right']].forEach(h=>t(h[0],h[1],558,'bold 19px Arial','#fff',h[2]));
+ v.lignes.forEach((l,i)=>{const Y=640+i*58;t(l.produit,A+20,Y,'28px Arial',E,'left',440);t(KG(l.qte),760,Y,'28px Arial',E,'right');t(F(l.pu),960,Y,'28px Arial',E,'right');t(F(l.montant),R-20,Y,'28px Arial',E,'right');if(i){x.fillStyle='#E5DAC5';x.fillRect(A,Y-40,W-160,1)}});x.translate(0,dy);
+ x.fillStyle='#E5DAC5';x.fillRect(A,675,W-160,2);x.fillStyle=E;x.fillRect(A,720,W-160,3);
+ t('Total à payer',A+20,782,'bold 38px Georgia');t(F(v.montant),R-20,782,'bold 38px Georgia',E,'right');
+ t('Déjà réglé',A+20,838,'28px Arial');t(F(v.montant-r),R-20,838,'28px Arial',E,'right');
+ t('Reste à payer',A+20,890,'bold 30px Arial');t(F(r),R-20,890,'bold 30px Arial',r>0?'#B5452C':'#3F6B3A','right');
+ const l=lettres(v.montant),ws=('Arrêtée la présente facture à la somme de : '+l[0].toUpperCase()+l.slice(1)+' francs CFA.').split(' ');x.font='26px Arial';let ln='';y=975;
+ ws.forEach(w=>{if(x.measureText(ln+w).width>W-160){t(ln,A,y,'26px Arial');y+=38;ln=''}ln+=w+' '});t(ln,A,y,'26px Arial');
+ t(r<=0?'PAYÉE':r<v.montant?'PARTIELLEMENT PAYÉE':'À PAYER',A,y+70,'bold 24px Arial',r<=0?'#3F6B3A':'#B5452C');
+ if(PL.length){let py=y+150;x.fillStyle='#F6EFE2';x.fillRect(A,py-44,W-160,sum(PLL,x=>x)*40+64);t('POUR PAYER',A+30,py-12,'bold 19px Arial',G);let Y=py+26;PL.forEach((l,i)=>{t(l[0],A+30,Y,'bold 25px Arial',E,'left',W-220);if(PLL[i]===2)Y+=40;t(l[1],R-30,Y,'25px Arial',E,'right',W-220);Y+=40})}
+ t('Le client',A,H-200+ex,'24px Arial',G);t('Pour la coopérative (signature et cachet)',R,H-200+ex,'24px Arial',G,'right');return c}
+function facShare(v){const url=facImg(v).toDataURL('image/png'),name='Facture_'+v.num+'.png';
+ try{const bin=atob(url.split(',')[1]),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);const f=new File([a],name,{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Facture '+v.num}).catch(()=>facShow(url,name));return}}catch(e){}
+ facShow(url,name)}
+function facShow(url,name){$('#sheet').innerHTML='<div class="grab"></div><h3>Facture en image</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Appuyez longuement sur l\'image pour l\'enregistrer ou la partager (WhatsApp, e-mail, impression).</p><img src="'+url+'" alt="Facture" style="width:100%;border:1px solid var(--trait);border-radius:10px;background:#fff"><div class="btns"><a class="btn" style="flex:1;text-align:center;text-decoration:none" href="'+url+'" download="'+name+'">⬇️ Télécharger l\'image</a><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on')}
+function facPrint(){let done=false;const ok=()=>{done=true};window.addEventListener('beforeprint',ok,{once:true});try{window.print()}catch(e){}
+ setTimeout(()=>{window.removeEventListener('beforeprint',ok);if(!done){const v=S.ventes.find(x=>x.id===arg);if(view==='facture'&&v){facShare(v);toast("Impression bloquée ici : utilisez l'image")}}},700)}
+function vRow(){return '<div class="pgrid vrow"><select class="vp">'+oProd().map(o=>'<option>'+esc(o[0])+'</option>').join('')+'</select><input class="vq" type="text" inputmode="decimal" placeholder="kg"><input class="vu" type="text" inputmode="decimal" placeholder="F/kg"><button type="button" class="x" data-a="vdel">✕</button></div>'}
+function vRead(){return [...document.querySelectorAll('.vrow')].map(r=>{const q=num(r.querySelector('.vq').value),u=num(r.querySelector('.vu').value);return {produit:r.querySelector('.vp').value,qte:q,pu:u,montant:Math.round(q*u)}})}
+function vPrev(){const L=vRead(),st=stock(),man=[];st.forEach(x=>{const q=sum(L.filter(l=>l.produit===x.n),l=>l.qte);if(q>x.q)man.push(x.n+' (stock '+KG(x.q)+')')});
+ $('#prev').innerHTML='<div class="prev"><small>Total de la facture · '+L.length+' ligne(s)</small>'+F(sum(L,l=>l.montant))+'</div>'+(man.length?'<div class="err">Stock insuffisant : '+esc(man.join(', '))+'</div>':'')}
+function openVente(){if(!S.params.produits.length){toast("Ajoutez d'abord un produit");return}
+ $('#sheet').innerHTML='<div class="grab"></div><h3>Nouvelle vente</h3><form id="vf"><label>Client / acheteur</label><input name="client" autocomplete="off"><label>Téléphone du client (WhatsApp / Wave)</label><input name="ctel" inputmode="tel" autocomplete="off" placeholder="77 123 45 67"><label>Adresse du client (facultatif)</label><input name="contact" autocomplete="off"><label>Date</label><input name="date" type="date" value="'+today()+'"><label>Produits vendus · quantité (kg) · prix (F/kg)</label><div id="vl">'+vRow()+'</div><button type="button" class="btn sm sec" data-a="vadd">+ Ajouter un produit</button><div id="prev"></div><div class="err" id="err"></div><div class="btns"><button type="button" class="btn sec" data-a="close">Annuler</button><button class="btn" type="submit">Enregistrer</button></div></form>';
+ $('#veil').classList.add('on');const f=$('#vf');f.addEventListener('input',vPrev);f.addEventListener('submit',e=>{e.preventDefault();const L=vRead(),cl=f.client.value.trim();
+  if(!cl){$('#err').textContent='À remplir : client';return}if(!f.date.value){$('#err').textContent='À remplir : date';return}
+  if(!L.length||L.some(l=>l.qte<=0||l.pu<=0)){$('#err').textContent='Vérifiez la quantité et le prix de chaque ligne';return}
+  const o={id:uid(),date:f.date.value,client:cl,ctel:f.ctel.value.trim(),contact:f.contact.value.trim(),lignes:L,montant:sum(L,l=>l.montant)};S.ventes.push(o);numeros();save();closeSheet();toast('Facture créée ✓');go('facture',o.id)});vPrev()}
+function dl(name,type,text){const blob=new Blob([text],{type});
+ try{const f=new File([blob],name,{type});if(window.matchMedia&&matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:name}).catch(()=>{});return}}catch(e){}
+ const u=URL.createObjectURL(blob),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+const CSV={
+ membres:()=>[['ID','Prénom et nom','Sexe','Village','Téléphone','N° CNI','Fonction','Adhésion','Parts souscrites','Montant souscrit','Montant libéré','Reste à libérer','Livré (kg)','Valeur livraisons','Payé','Reste à payer','Crédit restant']].concat(S.membres.map(m=>{const s=mstat(m);return [m.id,m.nom,m.sexe,m.village,m.tel,m.cni?'="'+String(m.cni).replace(/"/g,'')+'"':'',m.fonction,D(m.date),m.parts,s.sous,s.lib,s.resteParts,s.kg,s.val,s.paye,s.du,s.cred]})),
+ pesees:()=>[['Date','ID membre','Membre','Produit','Sacs','Poids brut (kg)','Poids net (kg)','Prix (F/kg)','Montant']].concat(byDate(S.pesees).map(x=>[D(x.date),x.m,M(x.m).nom,x.produit,x.sacs,x.brut,x.net,x.prix,x.montant])),
+ paiements:()=>[['Date','ID membre','Membre','Montant','Mode','Carte (4 derniers chiffres)','Référence']].concat(byDate(S.paiements).map(x=>[D(x.date),x.m,M(x.m).nom,x.montant,x.mode,x.carte?'•••• '+x.carte:'',x.ref||''])),
+ parts:()=>[['Date','ID membre','Membre','Montant','Mode']].concat(byDate(S.parts).map(x=>[D(x.date),x.m,M(x.m).nom,x.montant,x.mode])),
+ credits:()=>[['Date','ID membre','Membre','Intrant','Quantité','Prix unitaire','Montant intrant','Taux intérêt (%)','Intérêts','Total dû','Échéance','Remboursé','Reste dû','Statut']].concat(byDate(S.credits).map(c=>{const r=credReste(c);return [D(c.date),c.m,M(c.m).nom,c.intrant,c.qte,c.pu,c.montant,+c.taux||0,+c.interet||0,credDu(c),D(c.echeance),credDu(c)-r,r,r<=0?'Soldé':c.echeance<today()?'En retard':'En cours']})),
+ ventes:()=>{const o=[['N° facture','Date','Client','Contact','Produit','Quantité (kg)','Prix (F/kg)','Montant ligne','Total facture','Encaissé','Reste à encaisser']];byDate(S.ventes).forEach(v=>{const r=venteReste(v);v.lignes.forEach(l=>o.push([v.num,D(v.date),v.client,v.contact||'',l.produit,l.qte,l.pu,l.montant,v.montant,v.montant-r,r]))});return o},
+ stock:()=>[['Produit','Pesées (kg)','Autres entrées (kg)','Ventes (kg)','Pertes et retraits (kg)','Stock (kg)','Seuil (kg)']].concat(stock().map(x=>[x.n,x.e,x.ai,x.s,x.ao,x.q,x.seuil])),
+ emprunts:()=>[['Date','Prêteur','Objet','Montant reçu','Total à rembourser','Compte','Échéance','Remboursé','Reste dû','Statut']].concat(byDate(S.emprunts).map(e=>{const r=empReste(e),du=+e.du||e.montant;return [D(e.date),e.preteur,e.objet||'',e.montant,du,e.compte,D(e.echeance),du-r,r,r<=0?'Soldé':e.echeance<today()?'En retard':'En cours']})),
+ caisse:()=>[['Date','Libellé','Compte','Entrée','Sortie']].concat(mouvements().map(m=>[D(m.d),m.l,m.c,m.e||'',m.s||'']))};
+function csvOut(k){const cell=x=>{if(typeof x==='number')return String(x).replace('.',',');x=String(x==null?'':x);return /[;"\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};
+ dl(k+'_'+today()+'.csv','text/csv;charset=utf-8','\ufeff'+CSV[k]().map(r=>r.map(cell).join(';')).join('\r\n'));toast('Export créé')}
+function hcode(c){let h=5381;c='grenier:'+c;for(let i=0;i<c.length;i++)h=((h<<5)+h+c.charCodeAt(i))>>>0;return h.toString(36)}
+const LIC_SALT='GRN-2026-kaf7Q-ndimbal';
+function normNom(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
+function h53(str,seed){seed=seed||0;let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}
+ h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);return 4294967296*(2097151&h2)+(h1>>>0)}
+const B32='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+function enc32(n,len){let s='';for(let i=0;i<len;i++){s=B32[n%32]+s;n=Math.floor(n/32)}return s}
+function licKey(nom,plan,exp){const n=normNom(nom),h=h53(LIC_SALT+'|'+n+'|'+plan+exp),h2=h53(plan+exp+'|'+n+'|'+LIC_SALT,7);return 'GRN-'+plan+exp+'-'+enc32(h,4)+'-'+enc32(Math.floor(h/1048576),4)+'-'+enc32(h2,4)}
+function licClean(k){return String(k||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^GRN([ESP]\d{4})(\w{4})(\w{4})(\w{4})$/,'GRN-$1-$2-$3-$4')}
+function licFin(exp){if(exp==='0000')return null;const a=2000+ +exp.slice(0,2),m=+exp.slice(2);return new Date(a,m,0)}
+function licCheck(nom,key){const k=licClean(key),m=/^GRN-([ESP])(\d{4})-\w{4}-\w{4}-\w{4}$/.exec(k);if(!m||!normNom(nom))return {ok:false};const plan=m[1],exp=m[2];
+ if(exp!=='0000'){const mm=+exp.slice(2);if(mm<1||mm>12)return {ok:false}}
+ if(licKey(nom,plan,exp)!==k)return {ok:false};const fin=licFin(exp);return {ok:true,key:k,plan,exp,fin,expire:!!fin&&new Date()>new Date(fin.getFullYear(),fin.getMonth(),fin.getDate(),23,59,59)}}
+
+/* ====== Fournisseur : modifiez ces 3 lignes ====== */
+const VENDEUR={nom:'[Nom du fournisseur]',tel:'[Téléphone]',mail:'[E-mail]'};
+const ESSAI_JOURS=3;
+/* ====== Paramètres des offres ====== */
+const OFFRES={E:{nom:'Essentiel',prix:25000,renouv:15000,membres:50,appareils:2},S:{nom:'Standard',prix:60000,renouv:30000,membres:300,appareils:4},P:{nom:'Premium',prix:120000,renouv:60000,membres:Infinity,appareils:10}};
+const RANG={E:1,S:2,P:3};
+const FONCTIONS_OFFRE=[
+ {f:'base',l:'Membres, parts sociales, fiche membre',p:'E'},
+ {f:'base',l:'Pesées, paiements producteurs, stock',p:'E'},
+ {f:'base',l:'Caisse et banque, tableau de bord',p:'E'},
+ {f:'base',l:"Code d'accès, sauvegarde et code de transfert",p:'E'},
+ {f:'ventes',l:'Ventes et factures (image, WhatsApp, e-mail)',p:'S'},
+ {f:'credits',l:'Intrants à crédit',p:'S'},
+ {f:'emprunts',l:'Emprunts de la coopérative',p:'S'},
+ {f:'csv',l:'Export Excel des listes',p:'S'},
+ {f:'demande',l:'Demande de paiement au client (lien Wave, SMS)',p:'P'},
+ {f:'wpay',l:'« Payer par Wave » les producteurs',p:'P'}];
+const FEAT={};FONCTIONS_OFFRE.forEach(x=>{if(x.f!=='base')FEAT[x.f]=x.p});
+function essaiDebut(){let a='';try{a=localStorage.getItem('grenier_essai')||''}catch(e){}const b=S.essai||'',d=[a,b].filter(Boolean).sort()[0]||today();
+ S.essai=d;try{localStorage.setItem('grenier_essai',d)}catch(e){}return d}
+function licStat(){const L=S.licence;if(L&&L.cle){const c=licCheck(S.params.nom,L.cle);if(c.ok)return c.expire?{ok:false,mode:'expire',fin:c.fin,plan:c.plan,c}:{ok:true,mode:'licence',fin:c.fin,plan:c.plan,c}}
+ const d0=essaiDebut(),j=ESSAI_JOURS-Math.floor((new Date(today())-new Date(d0))/864e5);return j>0?{ok:true,mode:'essai',jours:j,plan:'P'}:{ok:false,mode:'essaifini',jours:0}}
+const planAct=()=>{const l=licStat();return l.ok?l.plan:''};
+const can=f=>!FEAT[f]||RANG[planAct()]>=RANG[FEAT[f]];
+const maxMembres=()=>{const p=planAct();return p?OFFRES[p].membres:0};
+const lk=f=>can(f)?'':' 🔒';
+function upsell(f,msg){const o=OFFRES[FEAT[f]||'S'];$('#sheet').innerHTML='<div class="grab"></div><h3>🔒 Formule '+o.nom+'</h3><p style="font-size:15px;margin:8px 0 4px">'+esc(msg||((FONCTIONS_OFFRE.find(x=>x.f===f)||{}).l||'Cette fonction'))+' est disponible à partir de la formule <b>'+o.nom+'</b>.</p><p style="font-size:14px;color:var(--gris);margin:0">Vos données sont conservées : il suffit de saisir une nouvelle clé de licence.</p><div class="btns"><button class="btn" data-a="go:licence">Voir les formules</button><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on')}
+function need(f){if(can(f))return true;upsell(f);return false}
+const VIEWFEAT={ventes:'ventes',facture:'ventes',credits:'credits',emprunts:'emprunts'};
+const fd=d=>d?String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear():'';
+function lock(){const d=document.createElement('div');d.id='lock';d.innerHTML='<p>'+esc(S.params.nom)+'</p><h3>Code d\'accès</h3><div style="height:18px"></div><form><input type="password" inputmode="numeric" autocomplete="off" aria-label="Code"><button class="btn">Ouvrir</button><div class="err"></div></form>';
+ document.body.appendChild(d);const i=d.querySelector('input');d.querySelector('form').addEventListener('submit',e=>{e.preventDefault();if(hcode(i.value.trim())===S.params.code){d.remove();render()}else{d.querySelector('.err').textContent='Code incorrect';i.value='';i.focus()}});setTimeout(()=>i.focus(),50)}
+const b64=u=>{let t='';for(let i=0;i<u.length;i+=8192)t+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(t)};
+const u8=t=>{const b=atob(t),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a};
+async function mkCode(){const raw=new TextEncoder().encode(JSON.stringify(Object.assign({},S,{_app:app()})));
+ if(window.CompressionStream){try{const z=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());return 'GRENIER2.'+b64(z)}catch(e){}}
+ return 'GRENIER1.'+b64(raw)}
+async function readCode(c){c=c.replace(/\s/g,'');const i=c.indexOf('.'),h=c.slice(0,i);let a=u8(c.slice(i+1));
+ if(h==='GRENIER2')a=new Uint8Array(await new Response(new Blob([a]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());else if(h!=='GRENIER1')throw 0;
+ const d=JSON.parse(new TextDecoder().decode(a));if(!d.params||!Array.isArray(d.membres))throw 0;return d}
+function codeOut(){mkCode().then(c=>{$('#sheet').innerHTML='<div class="grab"></div><h3>Code de transfert</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Envoyez ce code à l\'autre appareil (WhatsApp à vous-même, par exemple). Là-bas : Réglages › « Synchroniser avec un code ».</p><textarea id="tc" readonly style="width:100%;height:130px;font:12px monospace;border:1.5px solid var(--trait);border-radius:12px;padding:10px;word-break:break-all">'+c+'</textarea><div class="btns"><button class="btn" data-a="codecopy">📋 Copier</button>'+(navigator.share?'<button class="btn sec" data-a="codeshare">Partager</button>':'')+'<button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on')})}
+function codeMerge(){$('#sheet').innerHTML='<div class="grab"></div><h3>Synchroniser avec un autre appareil</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Collez le code reçu de l\'autre appareil. Ses nouvelles saisies sont ajoutées aux vôtres ; rien n\'est effacé, sauf ce qui a été supprimé là-bas.</p><textarea id="tc" placeholder="Collez le code ici" style="width:100%;height:130px;font:12px monospace;border:1.5px solid var(--trait);border-radius:12px;padding:10px;word-break:break-all"></textarea><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" data-a="codemerge">🔄 Synchroniser</button></div>';$('#veil').classList.add('on')}
+function codeIn(){$('#sheet').innerHTML='<div class="grab"></div><h3>Coller un code de transfert</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Les données de cet appareil seront remplacées par celles du code.</p><textarea id="tc" placeholder="Collez le code ici" style="width:100%;height:130px;font:12px monospace;border:1.5px solid var(--trait);border-radius:12px;padding:10px;word-break:break-all"></textarea><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" data-a="codeload">Importer</button></div>';$('#veil').classList.add('on')}
+function wPay(id){const m=M(id),du=Math.max(0,mstat(m).du);
+ $('#sheet').innerHTML='<div class="grab"></div><h3>Payer '+esc(m.nom)+' par Wave</h3>'+
+ '<div class="prev" style="margin-top:10px"><small>Montant à envoyer</small><input id="wm" inputmode="decimal" value="'+du+'" style="background:transparent;border:0;color:#fff;font:700 28px Georgia,serif;padding:2px 0"></div>'+
+ '<label>Numéro Wave du producteur</label><div style="display:flex;gap:8px"><input id="wt" inputmode="tel" value="'+esc(m.tel||'')+'" style="font:700 20px Arial,sans-serif"><button class="btn" style="flex:none" data-a="wcopy:t">Copier</button></div>'+
+ '<ol style="margin:14px 0 4px 18px;padding:0;font-size:14.5px;line-height:1.6"><li>Touchez <b>Copier</b> pour copier le numéro.</li><li>Ouvrez <b>Wave</b> › <b>Envoyer</b>, collez le numéro et tapez le montant.</li><li>Confirmez avec votre code, puis revenez ici.</li></ol>'+
+ '<div class="btns"><button class="btn sec" data-a="wcopy:m">Copier le montant</button></div>'+
+ '<div class="btns"><button class="btn" style="flex-basis:100%;background:var(--mil);color:#fff" data-a="wdone:'+id+'">✓ Paiement envoyé : enregistrer</button><button class="btn sec" data-a="close">Annuler</button></div>';
+ $('#veil').classList.add('on')}
+let cur=null;
+function openForm(k,id,preset){const fm=FORMS[k];preset=preset||{};
+ if((k==='pesee'||k==='paiement'||k==='part'||k==='credit')&&!S.membres.length){toast("Ajoutez d'abord un membre");return}
+ cur={k,id};
+ let h='<div class="grab"></div><h3>'+esc(k==='membre'&&id?'Modifier le membre':k==='pesee'&&id?'Modifier la pesée':fm.t)+'</h3><form id="fm">';
+ fm.f.forEach(f=>{let v=preset[f.n];if(v==null)v=f.type==='date'?today():'';
+  h+='<label>'+esc(f.l)+'</label>';
+  if(f.o){h+='<select name="'+f.n+'">'+f.o().map(o=>'<option value="'+esc(o[0])+'"'+(String(o[0])===String(v)?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>'}
+  else h+='<input name="'+f.n+'" type="'+(f.type==='number'?'text':f.type||'text')+'"'+(f.type==='number'?' inputmode="decimal"':'')+' value="'+esc(f.type==='number'&&v!==''?String(v).replace('.',','):v)+'" autocomplete="off">'});
+ h+='<div id="prev"></div><div class="err" id="err"></div><div class="btns"><button type="button" class="btn sec" data-a="close">Annuler</button><button class="btn" type="submit">Enregistrer</button></div></form>';
+ $('#sheet').innerHTML=h;$('#veil').classList.add('on');
+ const fe=$('#fm');if(k==='pesee'){const pp=()=>{const pr=S.params.produits.find(x=>x.n===fe.produit.value);fe.prix.value=pr?String(pr.prix).replace('.',','):''};if(preset.prix==null)pp();fe.produit.addEventListener('change',()=>{pp();prevUp()})}
+ if(fe.carte){const cl=fe.carte.previousElementSibling,sh=()=>{const on=fe.mode.value==='Carte Visa';fe.carte.style.display=cl.style.display=on?'':'none'};fe.carte.setAttribute('inputmode','numeric');fe.carte.setAttribute('maxlength','4');fe.carte.placeholder='ex. 4821';sh();fe.mode.addEventListener('change',sh)}
+ fe.addEventListener('input',prevUp);fe.addEventListener('submit',submit);prevUp()}
+function vals(){const fm=FORMS[cur.k],fd=new FormData($('#fm')),v={};fm.f.forEach(f=>{let x=(fd.get(f.n)||'').toString().trim();v[f.n]=f.type==='number'?(x===''?'':+x.replace(/\s/g,'').replace(',','.')):x});return v}
+function prevUp(){const fm=FORMS[cur.k];if(!fm.prev)return;const p=fm.prev(vals());$('#prev').innerHTML=p?'<div class="prev"><small>'+esc(p[0])+'</small>'+esc(p[1])+'</div>':''}
+function submit(e){e.preventDefault();const fm=FORMS[cur.k],v=vals();
+ for(const f of fm.f){const x=v[f.n];
+  if(f.type==='number'){if(f.opt&&x==='')continue;if(x===''||isNaN(x)||x<0||(!f.zero&&x<=0)){$('#err').textContent='Vérifiez : '+f.l;return}}
+  else if(!f.opt&&!x){$('#err').textContent='À remplir : '+f.l;return}}
+ fm.save(v,cur.id);save();closeSheet();toast('Enregistré ✓');render()}
+function closeSheet(){$('#veil').classList.remove('on')}
+function quick(){$('#sheet').innerHTML='<div class="grab"></div><h3>Que voulez-vous saisir ?</h3><div class="tiles" style="grid-template-columns:repeat(3,1fr);margin:16px 0">'+
+ [['pesee','⚖️','Pesée'],['paiement','💵','Paiement producteur'],['vente','🚚','Vente'],['part','🪙','Part sociale'],['credit','🌱','Intrants à crédit'],['op','🧾','Recette / dépense'],['emprunt','🏦','Emprunt'],['membre','👤','Nouveau membre']]
+ .map(x=>{const ff={vente:'ventes',credit:'credits',emprunt:'emprunts'}[x[0]];return '<div class="tile" data-a="form:'+x[0]+'"'+(ff&&!can(ff)?' style="opacity:.55"':'')+'><i>'+x[1]+'</i>'+x[2]+(ff?lk(ff):'')+'</div>'}).join('')+'</div><button class="btn sec" style="width:100%" data-a="close">Fermer</button>';
+ $('#veil').classList.add('on')}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1900)}
+
+/* ---------- vues ---------- */
+const TITLES={licence:'Licence',home:null,membres:'Membres',fiche:'Fiche du membre',pesees:'Pesées',paiements:'Paiements producteurs',parts:'Parts sociales',credits:'Intrants et crédits',ventes:'Ventes et factures',facture:'Facture',stock:'Magasin et stock',caisse:'Caisse et banque',emprunts:'Emprunts de la coopérative',params:'Réglages'};
+const del=(c,id)=>'<button class="x noprint" data-a="del:'+c+':'+id+'" aria-label="Supprimer">✕</button>';
+const list=(rows,vide)=>'<div class="card">'+(rows.length?rows.join(''):'<div class="empty">'+vide+'</div>')+'</div>';
+const byDate=a=>a.slice().sort((x,y)=>x.date<y.date?1:-1);
+const V={
+ home(){const ms=S.membres.map(m=>({m,s:mstat(m)})),so=soldes(),tres=sum(Object.values(so),x=>x),kg=sum(S.pesees,p=>p.net),
+  du=sum(ms,x=>Math.max(0,x.s.du)),nDu=ms.filter(x=>x.s.du>0).length,st=stock(),ca=sum(S.ventes,v=>v.montant),
+  nParts=ms.filter(x=>x.s.resteParts>0).length,ret=S.credits.filter(c=>credReste(c)>0&&c.echeance<today()),imp=S.ventes.filter(v=>venteReste(v)>0),bas=st.filter(x=>x.bas||x.neg),
+  fem=S.membres.filter(m=>m.sexe==='F').length;
+  const al=[];
+  if(nDu)al.push(['w','paiements',nDu+' producteur(s) à payer · '+F(du)]);
+  if(ret.length)al.push(['','credits',ret.length+' crédit(s) en retard · '+F(sum(ret,credReste))]);
+  if(imp.length)al.push(['w','ventes',imp.length+' facture(s) non soldée(s) · '+F(sum(imp,venteReste))]);
+  if(bas.length)al.push(['','stock','Stock à surveiller : '+bas.map(x=>x.n).join(', ')]);
+  if(nParts)al.push(['w','membres',nParts+' membre(s) avec parts à libérer']);
+  const er=S.emprunts.filter(e=>empReste(e)>0&&e.echeance<today());if(er.length)al.push(['','emprunts',er.length+' emprunt(s) en retard · '+F(sum(er,empReste))]);
+  Object.keys(so).forEach(c=>{if(so[c]<0)al.push(['','caisse','Solde négatif : '+c])});
+  const ls=licStat();
+  return (ls.mode==='essai'?'<div class="demo" data-a="go:licence" style="cursor:pointer"><b>Version d\'essai : '+ls.jours+' jour'+(ls.jours>1?'s':'')+' restant'+(ls.jours>1?'s':'')+'.</b> Touchez ici pour activer votre licence.</div>':'')+
+  (ls.mode==='licence'&&ls.fin&&(ls.fin-new Date())<30*864e5?'<div class="demo" data-a="go:licence" style="cursor:pointer"><b>Votre licence se termine le '+fd(ls.fin)+'.</b> Pensez à la renouveler.</div>':'')+
+  (S.demo?'<div class="demo"><b>Données d\'exemple.</b> Explorez librement, puis démarrez avec votre coopérative.<br><button class="btn sm" data-a="go:params">Démarrer avec mes données</button></div>':'')+
+  '<div class="kpis"><div class="kpi dark"><span>Trésorerie</span><b>'+F(tres)+'</b><em>Caisse '+F(so['Caisse'])+'</em></div>'+
+  '<div class="kpi"><span>À payer aux producteurs</span><b class="'+(du>0?'neg':'pos')+'">'+F(du)+'</b><em>'+nDu+' producteur(s)</em></div>'+
+  '<div class="kpi"><span>Collecté</span><b>'+KG(kg)+'</b><em>'+S.pesees.length+' pesée(s)</em></div>'+
+  '<div class="kpi"><span>Ventes</span><b>'+F(ca)+'</b><em>'+S.membres.length+' membres · '+fem+' femmes</em></div></div>'+
+  '<h2>À surveiller</h2><div class="card">'+(al.length?al.map(a=>'<div class="alert '+a[0]+'" data-a="go:'+a[1]+'"><i></i><span>'+esc(a[2])+'</span></div>').join(''):'<div class="empty">Tout est en ordre ✓</div>')+'</div>'+
+  '<h2>Rubriques</h2><div class="tiles">'+[['pesees','⚖️','Pesées'],['paiements','💵','Paiements'],['ventes','🚚','Ventes'],['stock','📦','Stock'],['parts','🪙','Parts'],['credits','🌱','Crédits'],['membres','👥','Membres'],['caisse','💰','Caisse']]
+  .map(x=>'<div class="tile" data-a="go:'+x[0]+'"'+(VIEWFEAT[x[0]]&&!can(VIEWFEAT[x[0]])?' style="opacity:.55"':'')+'><i>'+x[1]+'</i>'+x[2]+(VIEWFEAT[x[0]]?lk(VIEWFEAT[x[0]]):'')+'</div>').join('')+'</div>'},
+ membres(){return '<input class="search" id="q" placeholder="Rechercher un membre…" autocomplete="off"><div id="ml">'+V._ml('')+'</div><div class="btns"><button class="btn" data-a="form:membre">+ Nouveau membre</button></div>'},
+ _ml(q){q=q.toLowerCase();return list(S.membres.filter(m=>(m.nom+' '+m.id+' '+(m.village||'')).toLowerCase().includes(q)).map(m=>{const s=mstat(m);
+  return '<div class="row" data-a="go:fiche:'+m.id+'"><div class="av">'+m.id.slice(1)+'</div><div class="g"><div class="t">'+esc(m.nom)+'</div><div class="s">'+esc(m.village||'')+' · '+KG(s.kg)+'</div></div><div class="m">'+(s.du>0?'<span class="neg">'+F(s.du)+'</span><small>à payer</small>':'<span class="tag ok">Réglé</span>')+'</div></div>'}),'Aucun membre. Ajoutez le premier.')},
+ fiche(){const m=S.membres.find(x=>x.id===arg);if(!m){view='membres';return V.membres()}const s=mstat(m),h=[];
+  S.pesees.filter(x=>x.m===m.id).forEach(x=>h.push({date:x.date,t:'Pesée · '+x.produit,s:KG(x.net)+' net',v:F(x.montant)}));
+  S.paiements.filter(x=>x.m===m.id).forEach(x=>h.push({date:x.date,t:'Paiement reçu',s:x.mode,v:'− '+F(x.montant)}));
+  S.parts.filter(x=>x.m===m.id).forEach(x=>h.push({date:x.date,t:'Part sociale versée',s:x.mode,v:F(x.montant)}));
+  S.credits.filter(x=>x.m===m.id).forEach(x=>h.push({date:x.date,t:'Crédit · '+x.intrant,s:'reste '+F(credReste(x)),v:F(credDu(x))}));
+  return '<div class="card"><div class="row"><div class="av">'+m.id.slice(1)+'</div><div class="g"><div class="t" style="font:700 19px Georgia,serif">'+esc(m.nom)+'</div><div class="s">'+esc(m.id+' · '+m.fonction+' · '+(m.village||''))+'<br>'+esc(m.tel||'')+(m.cni?'<br>CNI '+esc(m.cni):'')+'</div></div><button class="x noprint" data-a="edit:'+m.id+'">Modifier</button></div></div>'+
+  '<h2>Situation</h2><div class="kpis"><div class="kpi dark"><span>Reste à payer au membre</span><b>'+F(s.du)+'</b><em>Livré '+F(s.val)+' · payé '+F(s.paye)+'</em></div>'+
+  '<div class="kpi"><span>Quantité livrée</span><b>'+KG(s.kg)+'</b></div>'+
+  '<div class="kpi"><span>Parts sociales</span><b>'+F(s.lib)+'</b><em>sur '+F(s.sous)+(s.resteParts>0?' · reste '+F(s.resteParts):' · à jour')+'</em><div class="bar"><div style="width:'+(s.sous?Math.min(100,s.lib/s.sous*100):0)+'%"></div></div></div>'+
+  '<div class="kpi"><span>Crédit intrants restant</span><b class="'+(s.cred>0?'neg':'')+'">'+F(s.cred)+'</b></div></div>'+
+  '<div class="btns"><button class="btn" data-a="form:pesee::'+m.id+'">⚖️ Pesée</button><button class="btn" data-a="form:paiement::'+m.id+'">💵 Payer</button><button class="btn sec" data-a="form:part::'+m.id+'">🪙 Part</button></div>'+
+  '<h2>Historique</h2>'+list(byDate(h).map(x=>'<div class="row"><div class="g"><div class="t">'+esc(x.t)+'</div><div class="s">'+D(x.date)+' · '+esc(x.s)+'</div></div><div class="m">'+x.v+'</div></div>'),'Aucune opération.')+
+  '<div class="sign"><span>Signature du membre : ______________</span><span>Le/la Trésorier(ère) : ______________</span></div>'+
+  '<div class="btns"><button class="btn sec" data-a="print">🖨️ Imprimer la fiche</button><button class="btn dan" data-a="del:membres:'+m.id+'">Supprimer</button></div>'},
+ pesees(){return '<div class="kpis"><div class="kpi dark"><span>Total collecté</span><b>'+KG(sum(S.pesees,p=>p.net))+'</b></div><div class="kpi"><span>Valeur des achats</span><b>'+F(sum(S.pesees,p=>p.montant))+'</b></div></div><div class="btns"><button class="btn" data-a="form:pesee">+ Nouvelle pesée</button></div><p style="color:var(--gris);font-size:13px;margin:0 4px 10px">Poids net = poids brut − (nombre de sacs × tare de '+dec(S.params.tare)+' kg). Montant = poids net × prix. Touchez une pesée pour la corriger.</p>'+
+  list(byDate(S.pesees).map(p=>'<div class="row"><div class="g" data-a="editp:'+p.id+'" style="cursor:pointer"><div class="t">'+esc(M(p.m).nom)+'</div><div class="s">'+D(p.date)+' · '+esc(p.produit)+' · '+p.sacs+' sacs<br>'+dec(p.brut)+' kg brut − '+dec(p.brut-p.net)+' kg tare = <b>'+KG(p.net)+' net</b></div></div><div class="m">'+F(p.montant)+'<small>'+nb(p.prix)+' F/kg</small></div>'+del('pesees',p.id)+'</div>'),'Aucune pesée.')},
+ paiements(){const ms=S.membres.map(m=>({m,s:mstat(m)})).filter(x=>x.s.du>0);
+  return '<h2 style="margin-top:4px">Producteurs à payer</h2>'+list(ms.map(x=>'<div class="row wr"><div class="g"><div class="t">'+esc(x.m.nom)+'</div><div class="s">Livré '+F(x.s.val)+' · payé '+F(x.s.paye)+(x.m.tel?' · Tél. '+esc(x.m.tel):'')+'</div></div><div class="m neg">'+F(x.s.du)+'<small>à payer</small></div><button class="btn sm" style="background:#1DC8FF" data-a="wpay:'+x.m.id+'">Payer par Wave'+lk('wpay')+'</button><button class="btn sm sec" data-a="form:paiement::'+x.m.id+'">Autre</button></div>'),'Tous les producteurs sont payés ✓')+
+  '<h2>Paiements effectués</h2>'+list(byDate(S.paiements).map(p=>'<div class="row"><div class="g"><div class="t">'+esc(M(p.m).nom)+'</div><div class="s">'+D(p.date)+' · '+esc(p.mode)+(p.carte?' •••• '+esc(p.carte):'')+(p.ref?' · réf. '+esc(p.ref):'')+'</div></div><div class="m">'+F(p.montant)+'</div>'+del('paiements',p.id)+'</div>'),'Aucun paiement.')},
+ parts(){const sous=sum(S.membres,m=>m.parts*S.params.part),lib=sum(S.parts,p=>p.montant);
+  return '<div class="kpis"><div class="kpi dark"><span>Capital libéré</span><b>'+F(lib)+'</b><em>sur '+F(sous)+' souscrits</em></div><div class="kpi"><span>Taux de libération</span><b>'+(sous?Math.round(lib/sous*100):0)+' %</b><div class="bar"><div style="width:'+(sous?Math.min(100,lib/sous*100):0)+'%"></div></div></div></div><div class="btns"><button class="btn" data-a="form:part">+ Versement</button></div>'+
+  '<h2>Situation par membre</h2>'+list(S.membres.map(m=>{const s=mstat(m);return '<div class="row" data-a="go:fiche:'+m.id+'"><div class="g"><div class="t">'+esc(m.nom)+'</div><div class="s">'+m.parts+' part(s) · libéré '+F(s.lib)+'</div></div>'+(s.resteParts>0?'<div class="m neg">'+F(s.resteParts)+'<small>reste</small></div>':'<span class="tag ok">À jour</span>')+'</div>'}),'Aucun membre.')+
+  '<h2>Versements</h2>'+list(byDate(S.parts).map(p=>'<div class="row"><div class="g"><div class="t">'+esc(M(p.m).nom)+'</div><div class="s">'+D(p.date)+' · '+esc(p.mode)+'</div></div><div class="m">'+F(p.montant)+'</div>'+del('parts',p.id)+'</div>'),'Aucun versement.')},
+ credits(){const tot=sum(S.credits,credDu),rest=sum(S.credits,credReste),int=sum(S.credits,c=>+c.interet||0);
+  return '<div class="kpis"><div class="kpi dark"><span>Reste à recouvrer</span><b>'+F(rest)+'</b><em>sur '+F(tot)+' dus'+(int?', dont '+F(int)+' d\'intérêts':'')+'</em></div><div class="kpi"><span>Taux de remboursement</span><b>'+(tot?Math.round((tot-rest)/tot*100):0)+' %</b></div></div><div class="btns"><button class="btn" data-a="form:credit">+ Intrants à crédit</button></div>'+
+  list(byDate(S.credits).map(c=>{const r=credReste(c),st=r<=0?['ok','Soldé']:c.echeance<today()?['ko','En retard']:['mid','En cours'];
+  return '<div class="row wr"><div class="g"><div class="t">'+esc(M(c.m).nom)+'</div><div class="s">'+esc(c.intrant)+' · '+F(credDu(c))+(c.interet?' dont '+F(c.interet)+' d\'intérêts ('+dec(c.taux)+' %)':'')+' · échéance '+D(c.echeance)+'</div><span class="tag '+st[0]+'">'+st[1]+'</span></div><div class="m">'+F(r)+'<small>reste dû</small></div>'+(r>0?'<button class="btn sm" data-a="form:remb:'+c.id+'">Rembourser</button>':'')+del('credits',c.id)+'</div>'}),'Aucun crédit.')},
+ ventes(){const ca=sum(S.ventes,v=>v.montant),cr=sum(S.ventes,venteReste);
+  return '<div class="kpis"><div class="kpi dark"><span>Chiffre d\'affaires</span><b>'+F(ca)+'</b></div><div class="kpi"><span>À encaisser</span><b class="'+(cr>0?'neg':'pos')+'">'+F(cr)+'</b></div></div><div class="btns"><button class="btn" data-a="form:vente">+ Nouvelle vente</button></div>'+
+  list(byDate(S.ventes).map(v=>{const r=venteReste(v),st=r<=0?['ok','Payée']:r<v.montant?['mid','Partielle']:['ko','Impayée'];
+  return '<div class="row wr"><div class="g" data-a="go:facture:'+v.id+'" style="cursor:pointer"><div class="t">'+esc(v.client)+'</div><div class="s">'+esc(v.num)+' · '+D(v.date)+' · '+esc(v.lignes.map(l=>l.produit).join(', '))+' · '+KG(sum(v.lignes,l=>l.qte))+'</div><span class="tag '+st[0]+'">'+st[1]+'</span> <span class="s" style="color:var(--encre);font-weight:700">🧾 Voir la facture ›</span></div><div class="m">'+F(v.montant)+(r>0?'<small>reste '+F(r)+'</small>':'')+'</div>'+(r>0?'<button class="btn sm" data-a="form:enc:'+v.id+'">Encaisser</button>':'')+del('ventes',v.id)+'</div>'}),'Aucune vente.')},
+ facture(){const v=S.ventes.find(x=>x.id===arg);if(!v){view='ventes';return V.ventes()}const p=S.params,r=venteReste(v),enc=v.montant-r,st=r<=0?['ok','Payée']:r<v.montant?['mid','Partiellement payée']:['ko','À payer'],
+  es=S.encs.filter(e=>e.v===v.id);
+  return '<div class="fac"><div class="top"><div><div class="co">'+esc(p.nom)+'</div><div class="sm">'+[p.adresse,p.tel?'Tél. '+p.tel:'',p.ninea?'NINEA / N° immatriculation : '+p.ninea:''].filter(Boolean).map(esc).join('<br>')+'</div></div><div class="ft"><b>FACTURE</b><div class="sm">N° '+esc(v.num)+'<br>Date : '+D(v.date)+'</div></div></div>'+
+  '<div class="cl"><div class="lb">Facturé à</div><div style="font-weight:700;font-size:16px">'+esc(v.client)+'</div><div class="sm">'+[cliTel(v)?'Tél. '+cliTel(v):'',v.contact&&v.contact!==cliTel(v)?v.contact:''].filter(Boolean).map(esc).join('<br>')+'</div></div>'+
+  '<table><tr><th>Désignation</th><th>Quantité</th><th>Prix unitaire</th><th>Montant</th></tr>'+v.lignes.map(l=>'<tr><td>'+esc(l.produit)+'</td><td>'+KG(l.qte)+'</td><td>'+F(l.pu)+'</td><td>'+F(l.montant)+'</td></tr>').join('')+'</table>'+
+  '<table class="tot" style="margin-top:8px"><tr class="big"><td>Total à payer</td><td>'+F(v.montant)+'</td></tr><tr><td>Déjà réglé</td><td>'+F(enc)+'</td></tr><tr><td><b>Reste à payer</b></td><td><b>'+F(r)+'</b></td></tr></table>'+
+  '<p class="let">Arrêtée la présente facture à la somme de : <b>'+(l=>l[0].toUpperCase()+l.slice(1))(lettres(v.montant))+'</b> francs CFA.</p>'+
+  '<p style="margin:12px 0 0"><span class="tag '+st[0]+'">'+st[1]+'</span>'+(es.length?' <span class="sm">'+es.map(e=>'Reçu '+F(e.montant)+' le '+D(e.date)+' ('+esc(e.mode)+')').join(' · ')+'</span>':'')+'</p>'+
+  (payLines().length?'<div class="pay"><div class="lb" style="margin-bottom:4px">Pour payer</div>'+payLines().map(l=>'<div class="pl"><span>'+esc(l[0])+'</span><span data-a="cp" data-v="'+esc(l[1].replace(/^RIB /,''))+'">'+esc(l[1])+'</span></div>').join('')+'</div>':'<p class="noprint" style="font-size:13px;color:var(--gris);margin:14px 0 0">Astuce : ajoutez vos numéros Wave / Orange Money et votre RIB dans Réglages pour qu\'ils apparaissent sur la facture.</p>')+
+  '<div class="sg"><div>Le client</div><div>Pour la coopérative<br>(signature et cachet)</div></div></div>'+
+  (r>0&&!can('demande')?'<div class="card noprint" data-a="dem:voir" style="padding:14px;margin-top:14px;cursor:pointer;opacity:.75"><b>🔒 Demander le paiement au client</b><div style="font-size:13px;color:var(--gris)">Lien Wave au bon montant envoyé par WhatsApp ou SMS : formule Premium.</div></div>':'')+(r>0&&can('demande')?'<div class="card noprint dem" style="padding:6px 14px 14px;margin-top:14px;border:2px solid var(--ocre)"><h3 style="font:700 18px Georgia,serif;margin:10px 0 2px">Demander le paiement au client</h3><p style="margin:0;font-size:13px;color:var(--gris)">Le client reçoit le montant et le lien sur son téléphone, puis confirme le paiement dans son application Wave.</p>'+
+  '<label>Téléphone du client</label><input data-v="ctel" inputmode="tel" placeholder="77 123 45 67" value="'+esc(cliTel(v))+'">'+
+  '<label>Lien de paiement Wave (facultatif si défini dans Réglages)</label><input data-v="lien" inputmode="url" placeholder="https://pay.wave.com/..." value="'+esc(v.lien||'')+'">'+
+  (vLink(v)?'<p style="margin:6px 2px 0;font-size:12.5px;color:var(--gris)">Lien envoyé au client, montant ajusté automatiquement à <b>'+F(r)+'</b> :<br><span style="word-break:break-all;color:var(--encre)">'+esc(vLink(v))+'</span>'+(!okLink(v.lien)?'<br>(lien Wave de la coopérative, défini dans Réglages)':'')+'</p>':'<p style="margin:6px 2px 0;font-size:12.5px;color:var(--gris)">Collez le lien Wave de la coopérative (pay.wave.com/m/…), ici ou une fois pour toutes dans Réglages : le montant sera toujours celui qui reste à payer. Sans lien, le message donne vos numéros Wave / Orange Money.</p>')+
+  '<div class="btns"><button class="btn" style="flex-basis:100%" data-a="dem:wa">📲 Envoyer par WhatsApp</button>'+(telSN(cliTel(v))?'<a class="btn sec" style="flex:1;text-align:center;text-decoration:none" href="'+esc(smsHref(v))+'" data-a="dem:smsok">💬 SMS</a>':'<button class="btn sec" data-a="dem:sms">💬 SMS</button>')+'<button class="btn sec" data-a="dem:share">Partager…</button></div>'+
+  '<p style="margin:0 2px 8px;font-size:12.5px;color:var(--gris)">Si le SMS ne s\'ouvre pas, touchez « Partager… » puis choisissez Messages.</p>'+
+  '<button class="btn sm sec" data-a="dem:voir">Voir le message</button></div>':'')+
+  '<div class="btns"><button class="btn" style="flex-basis:100%" data-a="share">📤 Partager la facture (image)</button><button class="btn sec" data-a="wa">WhatsApp</button><button class="btn sec" data-a="mail">E-mail</button><button class="btn sec" data-a="print">Imprimer</button></div>'+
+  (r>0?'<div class="btns"><button class="btn" data-a="form:enc:'+v.id+'">Encaisser un paiement</button></div>':'')},
+ stock(){const st=stock(),mx=Math.max(1,...st.map(x=>x.e));
+  return '<div class="kpis"><div class="kpi dark"><span>En magasin</span><b>'+KG(sum(st,x=>x.q))+'</b></div><div class="kpi"><span>Valeur (prix d\'achat)</span><b>'+F(sum(st,x=>x.q*(S.params.produits.find(p=>p.n===x.n).prix)))+'</b></div></div><div class="btns"><button class="btn" data-a="form:ajust">+ Ajouter ou retirer du stock</button></div><h2>Par produit</h2>'+
+  list(st.map(x=>'<div class="row" data-a="form:ajust::'+esc(x.n)+'"><div class="g"><div class="t">'+esc(x.n)+'</div><div class="s">Pesées '+KG(x.e)+' · ventes '+KG(x.s)+(x.ai||x.ao?' · ajustements '+(x.ai-x.ao>=0?'+':'−')+KG(Math.abs(x.ai-x.ao)):'')+'</div><div class="bar"><div style="width:'+Math.max(0,Math.min(100,x.q/mx*100))+'%;background:'+(x.bas||x.neg?'var(--lat)':'var(--mil)')+'"></div></div></div><div class="m">'+KG(x.q)+'<small>'+(x.neg?'<span class="neg">Stock négatif</span>':x.bas?'<span class="neg">Stock bas</span>':'seuil '+nb(x.seuil))+'</small></div></div>'),'Aucun produit.')+
+  '<p class="s" style="color:var(--gris);font-size:13px;margin:12px 4px">Les pesées augmentent le stock, les ventes le diminuent. Pour toute autre entrée ou sortie (stock de départ, achat, perte), touchez un produit.</p>'+
+  '<h2>Ajustements</h2>'+list(byDate(S.ajust).map(a=>'<div class="row"><div class="g"><div class="t">'+esc(a.produit)+'</div><div class="s">'+D(a.date)+(a.motif?' · '+esc(a.motif):'')+'</div></div><div class="m '+(a.sens==='Entrée'?'pos':'neg')+'">'+(a.sens==='Entrée'?'+ ':'− ')+KG(a.qte)+'</div>'+del('ajust',a.id)+'</div>'),'Aucun ajustement.')},
+ emprunts(){const tot=sum(S.emprunts,e=>+e.du||e.montant),rest=sum(S.emprunts,empReste);
+  return '<div class="kpis"><div class="kpi dark"><span>Reste à rembourser</span><b>'+F(rest)+'</b><em>sur '+F(tot)+' dus</em></div><div class="kpi"><span>Argent reçu</span><b>'+F(sum(S.emprunts,e=>e.montant))+'</b><em>'+S.emprunts.length+' emprunt(s)</em></div></div><div class="btns"><button class="btn" data-a="form:emprunt">+ Nouvel emprunt</button></div>'+
+  list(byDate(S.emprunts).map(e=>{const r=empReste(e),du=+e.du||e.montant,st=r<=0?['ok','Soldé']:e.echeance<today()?['ko','En retard']:['mid','En cours'];
+  return '<div class="row wr"><div class="g"><div class="t">'+esc(e.preteur)+'</div><div class="s">'+D(e.date)+' · reçu '+F(e.montant)+' sur '+esc(e.compte)+'<br>à rembourser '+F(du)+' avant le '+D(e.echeance)+(e.objet?'<br>'+esc(e.objet):'')+'</div><span class="tag '+st[0]+'">'+st[1]+'</span><div class="bar"><div style="width:'+(du?Math.min(100,(du-r)/du*100):0)+'%"></div></div></div><div class="m">'+F(r)+'<small>reste dû</small></div>'+(r>0?'<button class="btn sm" data-a="form:rembE:'+e.id+'">Rembourser</button>':'')+del('emprunts',e.id)+'</div>'}),'Aucun emprunt.')+
+  '<p style="color:var(--gris);font-size:13px;margin:12px 4px">L\'argent reçu entre dans le compte choisi et chaque remboursement en sort : la trésorerie se met à jour toute seule.</p>'},
+ caisse(){const so=soldes(),mv=mouvements();
+  return '<div class="kpis"><div class="kpi dark" style="grid-column:1/3"><span>Total disponible</span><b>'+F(sum(Object.values(so),x=>x))+'</b></div></div><div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-top:10px">'+COMPTES.map(c=>'<div class="kpi"><span>'+c+'</span><b style="font-size:17px" class="'+(so[c]<0?'neg':'')+'">'+F(so[c])+'</b></div>').join('')+'</div>'+
+  '<div class="card" style="margin-top:10px"><div class="row" data-a="go:emprunts"><div class="av">🏦</div><div class="g"><div class="t">Emprunts de la coopérative'+lk('emprunts')+'</div><div class="s">'+S.emprunts.length+' emprunt(s) · banque, entreprise, partenaire</div></div><div class="m '+(sum(S.emprunts,empReste)>0?'neg':'')+'">'+F(sum(S.emprunts,empReste))+'<small>à rembourser ›</small></div></div></div>'+
+  '<div class="btns"><button class="btn" data-a="form:op">+ Recette / dépense</button></div><h2>Journal</h2>'+
+  list(mv.map(m=>'<div class="row"><div class="g"><div class="t">'+esc(m.l)+'</div><div class="s">'+D(m.d)+' · '+esc(m.c)+'</div></div><div class="m '+(m.e?'pos':'neg')+'">'+(m.e?'+ '+F(m.e):'− '+F(m.s))+'</div>'+(m.op?del('ops',m.op):'')+'</div>'),'Aucun mouvement.')+
+  '<p style="color:var(--gris);font-size:13px;margin:12px 4px">Parts, ventes encaissées, remboursements et paiements aux producteurs arrivent ici automatiquement.</p>'},
+ licence(){const ls=licStat(),L=S.licence||{},bl=!ls.ok;
+  const st=ls.mode==='licence'?'<div class="lic"><span class="tag ok">Licence active · Formule '+OFFRES[ls.plan].nom+'</span><div style="margin-top:10px"><b>'+esc(S.params.nom)+'</b></div><div style="font-size:13px;color:#C9CEDB;margin:4px 0 8px">'+(ls.fin?'Valable jusqu\'au '+fd(ls.fin):'Licence permanente')+'</div><div class="k">'+esc(ls.c.key.slice(0,9))+'-••••-••••-••••</div></div>'
+   :ls.mode==='essai'?'<div class="lic"><span class="tag mid">Version d\'essai</span><div style="margin-top:10px"><b>'+ls.jours+' jour'+(ls.jours>1?'s':'')+' restant'+(ls.jours>1?'s':'')+'</b></div><div style="font-size:13px;color:#C9CEDB;margin-top:4px">Toutes les fonctions sont ouvertes pendant l\'essai.</div></div>'
+   :'<div class="lic"><span class="tag ko">'+(ls.mode==='expire'?'Licence expirée':'Essai terminé')+'</span><div style="margin-top:10px"><b>Activez une licence pour continuer</b></div><div style="font-size:13px;color:#C9CEDB;margin-top:4px">'+(ls.mode==='expire'?'Fin le '+fd(ls.fin)+'. ':'')+'Vos données sont conservées et vous pouvez les sauvegarder ci-dessous.</div></div>';
+  return st+'<h2>'+(ls.mode==='licence'?'Renouveler ou changer de licence':'Activer la licence')+'</h2><div class="card" style="padding:4px 14px 16px">'+
+  '<label>Nom de la coopérative (exactement comme sur la licence)</label><input id="ln" value="'+esc(S.params.nom)+'"><label>Clé de licence</label><input id="lk" placeholder="GRN-S0000-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" style="font-family:monospace;letter-spacing:.05em"><div class="err" id="lerr"></div><div class="btns" style="margin-bottom:0"><button class="btn" data-a="licact">Activer</button></div></div>'+
+  '<h2>Les formules</h2><div class="card" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:330px"><tr><th style="text-align:left;padding:10px 8px"></th>'+['E','S','P'].map(k=>'<th style="padding:10px 6px;'+(ls.plan===k&&ls.mode==='licence'?'background:var(--ocre2);':'')+'">'+OFFRES[k].nom+'<br><span style="font:700 13px Georgia,serif;white-space:nowrap">'+nb(OFFRES[k].prix)+' F</span></th>').join('')+'</tr>'+
+  FONCTIONS_OFFRE.map(x=>'<tr style="border-top:1px solid var(--trait)"><td style="padding:8px">'+esc(x.l)+'</td>'+['E','S','P'].map(k=>'<td style="text-align:center;'+(ls.plan===k&&ls.mode==='licence'?'background:var(--ocre2);':'')+'">'+(RANG[k]>=RANG[x.p]?'<span class="pos">✓</span>':'<span style="color:var(--trait)">—</span>')+'</td>').join('')+'</tr>').join('')+
+  '<tr style="border-top:1px solid var(--trait)"><td style="padding:8px">Nombre de membres</td>'+['E','S','P'].map(k=>'<td style="text-align:center;'+(ls.plan===k&&ls.mode==='licence'?'background:var(--ocre2);':'')+'">'+(OFFRES[k].membres===Infinity?'Illimité':OFFRES[k].membres)+'</td>').join('')+'</tr>'+
+  '<tr style="border-top:1px solid var(--trait)"><td style="padding:8px">Appareils synchronisés</td>'+['E','S','P'].map(k=>'<td style="text-align:center;'+(ls.plan===k&&ls.mode==='licence'?'background:var(--ocre2);':'')+'">'+OFFRES[k].appareils+'</td>').join('')+'</tr>'+
+  '<tr style="border-top:1px solid var(--trait)"><td style="padding:8px">Renouvellement / an</td>'+['E','S','P'].map(k=>'<td style="text-align:center">'+nb(OFFRES[k].renouv)+' F</td>').join('')+'</tr></table></div>'+
+  '<h2>Obtenir une licence</h2><div class="card" style="padding:14px;font-size:14px">'+esc(VENDEUR.nom)+'<br>Tél. / WhatsApp : '+esc(VENDEUR.tel)+'<br>'+esc(VENDEUR.mail)+'<p style="margin:8px 0 0;color:var(--gris);font-size:13px">Donnez le nom exact de votre coopérative : la clé est liée à ce nom.</p></div>'+
+  (bl?'<h2>Sauvegarder mes données</h2><div class="card" style="padding:14px"><div class="btns" style="margin:0"><button class="btn" data-a="codeout">📋 Code de transfert</button><button class="btn sec" data-a="export">⬇️ Fichier</button></div></div>':'')+
+  '<h2>Conditions de licence</h2><div class="card cond" style="padding:6px 16px 10px"><ol style="padding-left:18px">'+
+  ['Grenier est un logiciel protégé par le droit d\'auteur. Il reste la propriété de son auteur ; la coopérative en reçoit seulement le droit d\'utilisation.',
+   'La licence est personnelle à la coopérative ou au GIE dont le nom figure sur la clé. Elle peut être utilisée sur les téléphones et ordinateurs des membres de son bureau.',
+   'Il est interdit de copier, transmettre, revendre, louer ou modifier le logiciel pour une autre structure, et de contourner la clé de licence.',
+   'Les données saisies appartiennent à la coopérative. Elles restent sur ses appareils ; le fournisseur n\'y a pas accès. La coopérative est responsable de ses sauvegardes.',
+   'Le logiciel est un outil d\'aide à la gestion. Il ne remplace ni la comptabilité officielle, ni les contrôles internes, ni les obligations légales de la coopérative.',
+   'L\'assistance et les mises à jour sont fournies selon la formule souscrite et pendant sa durée.',
+   'À la fin de la licence, les données restent consultables en sauvegarde ; la saisie reprend après renouvellement.'].map(t=>'<li>'+t+'</li>').join('')+'</ol></div>'},
+ params(){const p=S.params;
+  return (mem?'<div class="demo"><b>Attention :</b> ce navigateur ne garde pas les données. Faites une sauvegarde avant de fermer.</div>':'')+
+  (S.demo?'<div class="demo"><b>Vous êtes sur les données d\'exemple.</b><br><button class="btn sm" data-a="reset">Effacer les exemples et commencer</button></div>':'')+
+  (()=>{const ls=licStat();return '<div class="card" style="margin-bottom:6px"><div class="row" data-a="go:licence"><div class="av">🔑</div><div class="g"><div class="t">Licence</div><div class="s">'+(ls.mode==='licence'?(ls.fin?'Active jusqu\'au '+fd(ls.fin):'Active (permanente)'):ls.mode==='essai'?'Essai : '+ls.jours+' jour(s) restant(s)':'Inactive')+'</div></div><div class="m">›</div></div></div>'})()+
+  '<h2 style="margin-top:14px">Ma coopérative</h2><div class="card" style="padding:4px 14px 16px"><label>Nom de la coopérative / du GIE</label><input data-p="nom" value="'+esc(p.nom)+'"'+(licStat().mode==='licence'?' readonly style="background:var(--sable)"':'')+'>'+(licStat().mode==='licence'?'<p style="margin:4px 2px 0;font-size:12.5px;color:var(--gris)">Nom lié à la licence : il ne peut pas être modifié.</p>':'')+'<label>Adresse (pour les factures)</label><input data-p="adresse" value="'+esc(p.adresse)+'"><div class="two"><div><label>Téléphone</label><input data-p="tel" value="'+esc(p.tel)+'"></div><div><label>NINEA / N° immat.</label><input data-p="ninea" value="'+esc(p.ninea)+'"></div></div><div class="two"><div><label>Campagne</label><input data-p="campagne" value="'+esc(p.campagne)+'"></div><div><label>Valeur d\'une part (F)</label><input data-p="part" type="text" inputmode="decimal" value="'+p.part+'"></div></div><label>Tare par sac (kg)</label><input data-p="tare" type="text" inputmode="decimal" value="'+p.tare+'"><label>Taux d\'intérêt sur les crédits intrants (%)</label><input data-p="tauxCredit" type="text" inputmode="decimal" value="'+String(p.tauxCredit||0).replace('.',',')+'"><p style="margin:4px 2px 0;font-size:12.5px;color:var(--gris)">Appliqué par défaut à chaque nouveau crédit (modifiable crédit par crédit).</p></div>'+
+  '<h2>Comptes pour recevoir les paiements</h2><div class="card" style="padding:4px 14px 16px"><p style="margin:12px 0 0;font-size:13px;color:var(--gris)">Ces coordonnées s\'affichent sur chaque facture (écran, image, WhatsApp, e-mail) pour que le client sache où payer.</p><div class="two"><div><label>Numéro Wave</label><input data-p="wave" inputmode="tel" value="'+esc(p.wave)+'"></div><div><label>Numéro Orange Money</label><input data-p="om" inputmode="tel" value="'+esc(p.om)+'"></div></div><label>Numéro Free Money</label><input data-p="free" inputmode="tel" value="'+esc(p.free)+'"><label>Banque</label><input data-p="banque" value="'+esc(p.banque)+'"><label>RIB / IBAN</label><input data-p="rib" value="'+esc(p.rib)+'"><label>Lien de paiement Wave Business (facultatif)</label><input data-p="waveLink" inputmode="url" placeholder="https://pay.wave.com/m/..." value="'+esc(p.waveLink)+'"><p style="margin:6px 2px 0;font-size:12.5px;color:var(--gris)">Collez votre lien marchand Wave (ex. https://pay.wave.com/m/…/c/sn/). Pour chaque facture, le montant du lien est remplacé automatiquement par le reste à payer.</p></div>'+
+  '<h2>Produits · prix d\'achat (F/kg) · seuil d\'alerte (kg)</h2><div class="card" style="padding:14px">'+p.produits.map((x,i)=>'<div class="pgrid"><input data-pr="'+i+':n" value="'+esc(x.n)+'"><input data-pr="'+i+':prix" type="text" inputmode="decimal" value="'+x.prix+'"><input data-pr="'+i+':seuil" type="text" inputmode="decimal" value="'+x.seuil+'"><button class="x" data-a="delprod:'+i+'">✕</button></div>').join('')+'<button class="btn sm sec" data-a="addprod">+ Ajouter un produit</button></div>'+
+  '<h2>Soldes de départ</h2><div class="card" style="padding:4px 14px 16px">'+COMPTES.map(c=>'<label>'+c+' (F)</label><input data-init="'+c+'" type="text" inputmode="decimal" value="'+(p.init[c]||0)+'">').join('')+'</div>'+
+  '<h2>Exporter vers Excel</h2><div class="card" style="padding:14px"><p style="margin:0 0 10px;font-size:14px;color:var(--gris)">Chaque liste sort en fichier CSV, qui s\'ouvre dans Excel.</p><div class="exp">'+[['membres','Membres'],['pesees','Pesées'],['paiements','Paiements'],['parts','Parts sociales'],['credits','Crédits'],['ventes','Ventes'],['stock','Stock'],['emprunts','Emprunts'],['caisse','Journal de caisse']].map(x=>'<button class="btn sm sec" data-a="csv:'+x[0]+'">'+x[1]+lk('csv')+'</button>').join('')+'</div></div>'+
+  '<h2>Code d\'accès</h2><div class="card" style="padding:4px 14px 16px"><label>'+(p.code?'Nouveau code':'Choisir un code (4 chiffres au minimum)')+'</label><input id="nc" type="password" inputmode="numeric" autocomplete="off"><div class="btns"><button class="btn" data-a="setcode">'+(p.code?'Changer le code':'Activer le code')+'</button>'+(p.code?'<button class="btn sec" data-a="lock">🔒 Verrouiller</button>':'')+'</div>'+(p.code?'<button class="btn dan sm" data-a="nocode">Supprimer le code</button>':'<p style="margin:0;font-size:13px;color:var(--gris)">Le code sera demandé à chaque ouverture. Notez-le : il n\'y a pas de récupération.</p>')+'</div>'+
+  '<h2>Plusieurs appareils</h2><div class="card" style="padding:14px"><p style="margin:0 0 6px;font-size:14px">Chaque téléphone du bureau porte une lettre différente. Votre formule permet <b>'+(planAct()?OFFRES[planAct()].appareils:0)+' appareil(s)</b>.</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+APPS.slice(0,planAct()?OFFRES[planAct()].appareils:1).split('').map(x=>'<button class="btn sm'+(x===app()?'':' sec')+'" data-a="setapp:'+x+'">'+x+(x==='A'?' (principal)':'')+'</button>').join('')+'</div>'+
+  '<p style="margin:10px 0 0;font-size:13.5px;line-height:1.5"><b>Synchroniser</b> (chaque soir, ou après une journée de collecte) :<br>1. Sur le téléphone B : « Envoyer mon code ».<br>2. Sur le téléphone A : « Synchroniser avec un code ».<br>3. Puis l\'inverse, de A vers B.</p>'+
+  '<div class="btns"><button class="btn" data-a="codeout">📤 Envoyer mon code</button><button class="btn" data-a="codesync">🔄 Synchroniser avec un code</button></div>'+
+  '<p style="margin:0;font-size:12.5px;color:var(--gris)">Nouveau téléphone : sur A « Envoyer mon code », sur le nouveau « Remplacer par un code » (ci-dessous), puis choisissez sa lettre.</p></div>'+
+  '<h2>Sauvegarde</h2><div class="card" style="padding:14px"><p style="margin:0 0 4px;font-size:14px;color:var(--gris)">Les données restent sur cet appareil. Sauvegardez chaque semaine et gardez le fichier (WhatsApp, clé USB).</p><div class="btns"><button class="btn sec" data-a="codein">Remplacer par un code</button></div><p style="margin:0 0 4px;font-size:13px;color:var(--gris)">« Remplacer » efface les données de cet appareil et les remplace par celles du code (nouvel appareil, nouvelle version).</p><div class="btns"><button class="btn sec" data-a="export">⬇️ Fichier de sauvegarde</button><button class="btn sec" data-a="import">⬆️ Restaurer</button></div><input type="file" id="imp" accept=".json,application/json" style="display:none"><button class="btn dan sm" data-a="reset">Tout effacer et repartir de zéro</button></div>'}
+};
+function render(){const ls=licStat();document.body.classList.toggle('bloque',!ls.ok);if(!ls.ok)view='licence';const t=TITLES[view];$('#hsub').textContent=t?S.params.nom:'Campagne '+S.params.campagne;$('#htitle').textContent=t||S.params.nom;
+ $('#back').style.display=view==='home'?'none':'block';
+ document.querySelectorAll('nav [data-n]').forEach(b=>b.classList.toggle('on',b.dataset.n===view||(b.dataset.n==='membres'&&view==='fiche')));
+ const vf=VIEWFEAT[view];$('#app').innerHTML=vf&&!can(vf)?'<div class="card" style="padding:28px 18px;text-align:center"><div style="font-size:40px">🔒</div><h3 style="font:700 20px Georgia,serif;margin:8px 0">Formule '+OFFRES[FEAT[vf]].nom+'</h3><p style="color:var(--gris);margin:0 0 14px">'+esc((FONCTIONS_OFFRE.find(x=>x.f===vf)||{}).l)+' : disponible à partir de la formule '+OFFRES[FEAT[vf]].nom+'.</p><button class="btn" data-a="go:licence">Voir les formules</button></div>':V[view]();document.body.classList.toggle('pf',view==='facture');
+ const q=$('#q');if(q)q.addEventListener('input',()=>{$('#ml').innerHTML=V._ml(q.value)})}
+function go(v,a){view=v;arg=a||null;render();window.scrollTo(0,0)}
+
+/* ---------- actions ---------- */
+const USED=id=>S.pesees.some(x=>x.m===id)||S.paiements.some(x=>x.m===id)||S.parts.some(x=>x.m===id)||S.credits.some(x=>x.m===id);
+document.addEventListener('click',e=>{
+ if(e.target.id==='veil'){closeSheet();return}
+ const b=e.target.closest('[data-a]');if(!b)return;const [a,p1,p2,p3]=b.dataset.a.split(':');
+ {const FF={vente:'ventes',enc:'ventes',credit:'credits',remb:'credits',emprunt:'emprunts',rembE:'emprunts'};
+  if(a==='form'&&FF[p1]&&!need(FF[p1]))return;
+  if(a==='csv'&&!need('csv'))return;
+  if((a==='dem'||a==='wpay')&&!need(a==='dem'?'demande':'wpay'))return;
+  if(a==='form'&&p1==='membre'&&!p2&&S.membres.length>=maxMembres()){upsell(planAct()==='E'?'ventes':'demande','Gérer plus de '+maxMembres()+' membres');return}}
+ if(a==='go')go(p1,p2);
+ else if(a==='back')go(view==='fiche'?'membres':view==='facture'?'ventes':view==='emprunts'?'caisse':'home');
+ else if(a==='quick')quick();
+ else if(a==='close')closeSheet();
+ else if(a==='form'){let pre={};if(p3)pre[p1==='ajust'?'produit':'m']=p3;if(p1==='credit')pre.taux=String(S.params.tauxCredit||0).replace('.',',');
+  if(p1==='remb'){const c=S.credits.find(x=>x.id===p2);pre.montant=credReste(c)}
+  if(p1==='rembE'){const e=S.emprunts.find(x=>x.id===p2);pre.montant=empReste(e);pre.compte=e.compte}
+  if(p1==='enc'){const v=S.ventes.find(x=>x.id===p2);pre.montant=venteReste(v)}
+  if(p1==='paiement'&&p3){pre.montant=Math.max(0,mstat(M(p3)).du)||''}
+  if(p1==='part'&&p3){pre.montant=mstat(M(p3)).resteParts||''}
+  p1==='vente'?openVente():openForm(p1,p2||null,pre)}
+ else if(a==='edit')openForm('membre',p1,M(p1));
+ else if(a==='editp')openForm('pesee',p1,S.pesees.find(x=>x.id===p1));
+ else if(a==='print')facPrint();
+ else if(a==='share'||a==='wa'||a==='mail'){const v=S.ventes.find(x=>x.id===arg);if(!v)return;
+  if(a==='share')facShare(v);
+  else if(a==='mail')location.href='mailto:?subject='+encodeURIComponent('Facture '+v.num+' – '+S.params.nom)+'&body='+encodeURIComponent(facTxt(v).replace(/\*/g,''));
+  else{const tel=telSN(cliTel(v)),u='https://wa.me/'+tel+'?text='+encodeURIComponent(facTxt(v));if(!window.open(u,'_blank'))location.href=u}}
+ else if(a==='vadd'){$('#vl').insertAdjacentHTML('beforeend',vRow());vPrev()}
+ else if(a==='vdel'){if(document.querySelectorAll('.vrow').length>1){b.closest('.vrow').remove();vPrev()}}
+ else if(a==='csv')csvOut(p1);
+ else if(a==='lock')lock();
+ else if(a==='setcode'){const c=$('#nc').value.trim();if(!/^\d{4,}$/.test(c)){toast('4 chiffres au minimum');return}S.params.code=hcode(c);save();toast('Code activé');render()}
+ else if(a==='dem'){const v=S.ventes.find(x=>x.id===arg);if(!v)return;const txt=demTxt(v),tel=telSN(cliTel(v));
+  if(p1==='voir'){$('#sheet').innerHTML='<div class="grab"></div><h3>Message envoyé au client</h3><textarea id="tc" readonly style="width:100%;height:260px;font:14px Arial,sans-serif;border:1.5px solid var(--trait);border-radius:12px;padding:10px">'+esc(txt)+'</textarea><div class="btns"><button class="btn" data-a="codecopy">📋 Copier</button><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on');return}
+  if(p1==='smsok'){v.demande=today();save();return}
+  if(p1==='share'){const t=txt.replace(/\*/g,'');if(navigator.share)navigator.share({text:t}).then(()=>{v.demande=today();save()}).catch(()=>{});else{$('#sheet').innerHTML='<div class="grab"></div><h3>Message pour le client</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Copiez le message et collez-le dans votre application SMS.</p><textarea id="tc" readonly style="width:100%;height:260px;font:14px Arial,sans-serif;border:1.5px solid var(--trait);border-radius:12px;padding:10px">'+esc(t)+'</textarea><div class="btns"><button class="btn" data-a="codecopy">📋 Copier</button><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on')}return}
+  if(!tel){toast('Saisissez le téléphone du client');const i=document.querySelector('[data-v=ctel]');if(i)i.focus();return}
+  if(p1==='wa'){const u='https://wa.me/'+tel+'?text='+encodeURIComponent(txt);if(!window.open(u,'_blank'))location.href=u}
+  else if(p1==='sms')location.href=smsHref(v);
+  v.demande=today();save()}
+ else if(a==='wpay')wPay(p1);
+ else if(a==='wcopy'){const v=p1==='t'?$('#wt').value.replace(/\s/g,''):String(num($('#wm').value)),ok=()=>toast((p1==='t'?'Numéro':'Montant')+' copié : '+v);
+  if(!v||v==='0'){toast(p1==='t'?'Saisissez le numéro':'Saisissez le montant');return}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(ok,()=>toast(v));else toast(v)}
+ else if(a==='wdone'){const m=M(p1),mt=num($('#wm').value),tel=$('#wt').value.trim();
+  if(mt<=0){toast('Saisissez le montant');return}
+  if(tel&&tel!==m.tel)m.tel=tel;
+  S.paiements.push({id:uid(),date:today(),m:p1,montant:mt,mode:'Wave'});save();closeSheet();toast('Paiement de '+F(mt)+' enregistré ✓');render()}
+ else if(a==='cp'){const v=b.dataset.v,ok=()=>toast('Copié : '+v);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(ok,()=>toast(v));else toast(v)}
+ else if(a==='licact'){const n=$('#ln').value.trim(),c=licCheck(n,$('#lk').value);
+  if(!c.ok){$('#lerr').textContent='Clé non valable pour ce nom. Vérifiez le nom exact et la clé.';return}
+  if(c.expire){$('#lerr').textContent='Cette clé a expiré le '+fd(c.fin)+'.';return}
+  S.params.nom=n;S.licence={cle:c.key,date:today()};save();toast('Licence activée ✓');go('home')}
+ else if(a==='codeout')codeOut();
+ else if(a==='codein')codeIn();
+ else if(a==='codesync')codeMerge();
+ else if(a==='codemerge'){readCode($('#tc').value).then(d=>{if(d._app&&d._app===app()){$('#err').textContent='Ce code vient d\'un appareil qui porte aussi la lettre '+app()+'. Donnez une lettre différente à chaque appareil (Réglages › Plusieurs appareils), puis recommencez.';return}
+  if(normNom(d.params&&d.params.nom)!==normNom(S.params.nom)){$('#err').textContent='Ce code vient d\'une autre coopérative ('+(d.params&&d.params.nom||'?')+').';return}
+  const r=fusion(d);$('#sheet').innerHTML='<div class="grab"></div><h3>Synchronisation terminée ✓</h3><div class="card" style="padding:4px 14px;margin:12px 0"><div class="row"><div class="g">Ajoutés</div><b>'+r.add+'</b></div><div class="row"><div class="g">Mis à jour</div><b>'+r.upd+'</b></div><div class="row"><div class="g">Supprimés</div><b>'+r.rm+'</b></div></div><p style="font-size:14px;color:var(--gris)">Pour que l\'autre appareil reçoive aussi vos saisies, envoyez-lui maintenant votre code.</p><div class="btns"><button class="btn" data-a="codeout">📤 Envoyer mon code</button><button class="btn sec" data-a="close">Fermer</button></div>';render()})
+  .catch(()=>{$('#err').textContent='Code non reconnu ou incomplet'})}
+ else if(a==='setapp'){try{localStorage.setItem('grenier_appareil',p1)}catch(e){}toast('Cet appareil : '+p1);render()}
+ else if(a==='codecopy'){const t=$('#tc'),ok=()=>toast('Code copié ✓'),fb=()=>{t.focus();t.select();t.setSelectionRange(0,t.value.length);try{document.execCommand('copy')?ok():toast('Sélectionnez puis copiez le code')}catch(e){toast('Sélectionnez puis copiez le code')}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(ok,fb);else fb()}
+ else if(a==='codeshare')navigator.share({title:'Code de transfert – '+S.params.nom,text:$('#tc').value}).catch(()=>{});
+ else if(a==='del'||a==='reset'||a==='delprod'||a==='nocode'||a==='codeload'){
+  if(!b.classList.contains('sure')){b.classList.add('sure');b.dataset.o=b.textContent;b.textContent='Confirmer ?';setTimeout(()=>{if(b.isConnected){b.classList.remove('sure');b.textContent=b.dataset.o}},3000);return}
+  if(a==='codeload'){readCode($('#tc').value).then(d=>{delete d._app;S=Object.assign(empty(),d);numeros();snap();save();closeSheet();toast('Données importées ✓');go('home')}).catch(()=>{$('#err').textContent='Code non reconnu ou incomplet';b.classList.remove('sure');b.textContent='Importer'});return}
+  if(a==='nocode'){S.params.code='';save();toast('Code supprimé');render();return}
+  if(a==='reset'){const keep={licence:S.licence,essai:S.essai,nom:S.licence?S.params.nom:null};S=empty();if(keep.licence){S.licence=keep.licence;S.params.nom=keep.nom}S.essai=keep.essai;snap();save();toast('Prêt pour vos données');go('params');return}
+  if(a==='delprod'){const pr=S.params.produits[+p1];if(S.pesees.some(x=>x.produit===pr.n)||S.ventes.some(v=>v.lignes.some(l=>l.produit===pr.n))||S.ajust.some(x=>x.produit===pr.n)){toast('Produit déjà utilisé');render();return}S.params.produits.splice(+p1,1);save();render();return}
+  if(p1==='membres'){if(USED(p2)){toast('Impossible : ce membre a des opérations');render();return}S.membres=S.membres.filter(x=>x.id!==p2);tomb(p2);save();go('membres');return}
+  S[p1]=S[p1].filter(x=>x.id!==p2);tomb(p2);
+  if(p1==='credits'){tomb(...S.rembs.filter(x=>x.c===p2).map(x=>x.id));S.rembs=S.rembs.filter(x=>x.c!==p2)}
+  if(p1==='ventes'){tomb(...S.encs.filter(x=>x.v===p2).map(x=>x.id));S.encs=S.encs.filter(x=>x.v!==p2)}
+  if(p1==='emprunts'){tomb(...S.rembE.filter(x=>x.e===p2).map(x=>x.id));S.rembE=S.rembE.filter(x=>x.e!==p2)}
+  save();toast('Supprimé');render()}
+ else if(a==='addprod'){S.params.produits.push({n:'Nouveau produit',prix:0,seuil:0});save();render()}
+ else if(a==='export'){dl('sauvegarde_cooperative_'+today()+'.json','application/json',JSON.stringify(S));toast('Sauvegarde créée')}
+ else if(a==='import')$('#imp').click();
+});
+document.addEventListener('change',e=>{const t=e.target;
+ if(t.dataset.p){const k=t.dataset.p;if(k==='nom'&&licStat().mode==='licence'){t.value=S.params.nom;return}if(k==='waveLink'&&t.value.trim()&&!okLink(t.value.trim())){toast('Le lien doit commencer par https://');t.value=S.params.waveLink||'';return}
+  S.params[k]=(k==='part'||k==='tare'||k==='tauxCredit')?num(t.value):t.value.trim();save();if(k==='nom')$('#hsub').textContent=S.params.nom}
+ else if(t.dataset.v){const v=S.ventes.find(x=>x.id===arg);if(!v)return;const val=t.value.trim();
+  if(t.dataset.v==='lien'&&val&&!okLink(val)){toast('Le lien doit commencer par https://');t.value=v.lien||'';return}
+  v[t.dataset.v]=val;save();toast('Enregistré ✓');render()}
+ else if(t.dataset.init){S.params.init[t.dataset.init]=num(t.value);save()}
+ else if(t.dataset.pr){const [i,k]=t.dataset.pr.split(':'),pr=S.params.produits[+i];
+  if(k==='n'){const nv=t.value.trim();if(!nv||S.params.produits.some((x,j)=>j!==+i&&x.n===nv)){toast('Nom déjà utilisé ou vide');t.value=pr.n;return}
+   S.pesees.forEach(x=>{if(x.produit===pr.n)x.produit=nv});S.ventes.forEach(v=>v.lignes.forEach(l=>{if(l.produit===pr.n)l.produit=nv}));S.ajust.forEach(x=>{if(x.produit===pr.n)x.produit=nv});pr.n=nv}
+  else pr[k]=num(t.value);save()}
+ else if(t.id==='imp'&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.params||!Array.isArray(d.membres))throw 0;delete d._app;S=Object.assign(empty(),d);numeros();snap();save();toast('Données restaurées');go('home')}catch(x){toast('Fichier non reconnu')}};r.readAsText(t.files[0]);t.value=''}
+});
+load();S.params.code?lock():render();
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register('sw.js').then(reg=>{
+ reg.addEventListener('updatefound',()=>{const w=reg.installing;w&&w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)toast('Nouvelle version prête : fermez et rouvrez l\'application')})})}).catch(()=>{})}
+</script>
+</body>
+</html>
