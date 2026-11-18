@@ -340,7 +340,7 @@ function licCheck(nom,key){const k=licClean(key),m=/^GRN-([ESP])(\d{4})-\w{4}-\w
  if(licKey(nom,plan,exp)!==k)return {ok:false};const fin=licFin(exp);return {ok:true,key:k,plan,exp,fin,expire:!!fin&&new Date()>new Date(fin.getFullYear(),fin.getMonth(),fin.getDate(),23,59,59)}}
 
 /* ====== Fournisseur : modifiez ces 3 lignes ====== */
-const VENDEURS=[{nom:'Lala Ndiaye',tel:'77 627 60 09',mail:'ndiaye.lala97@gmail.com'},{nom:'Adama Faye',tel:'77 347 70 60',mail:''}];
+const VENDEURS=[{nom:'Lala Ndiaye',tel:'77 627 60 09',mail:'ndiaye.lala97@gmail.com'},{nom:'Adama Faye',tel:'77 347 70 60',mail:''},{nom:'Babacar Diouf',tel:'77 016 32 47',mail:''}];
 const ESSAI_JOURS=3;
 /* ====== Paramètres des offres ====== */
 const OFFRES={E:{nom:'Essentiel',prix:25000,renouv:15000,membres:50,appareils:2},S:{nom:'Standard',prix:60000,renouv:30000,membres:300,appareils:4},P:{nom:'Premium',prix:120000,renouv:60000,membres:Infinity,appareils:10}};
