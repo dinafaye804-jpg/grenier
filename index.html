@@ -343,6 +343,8 @@ function licCheck(nom,key){const k=licClean(key),m=/^GRN2-([ESP])(\d{4})-([A-Za-
 
 
 /* ====== Fournisseur : modifiez ces 3 lignes ====== */
+/* Identifiant Google Cloud (OAuth, type Application Web). Vide = synchro Google Drive masquée. */
+const GDRIVE_CLIENT_ID='820362646268-vrouf475r3oj8pn2v0fhaemo7ifcbehf.apps.googleusercontent.com';
 const VENDEURS=[{nom:'Lala Ndiaye',tel:'77 627 60 09',mail:'ndiaye.lala97@gmail.com'},{nom:'Adama Faye',tel:'77 347 70 60',mail:''},{nom:'Babacar Diouf',tel:'77 016 32 47',mail:''}];
 const ESSAI_JOURS=3;
 /* ====== Paramètres des offres ====== */
@@ -359,6 +361,7 @@ const FONCTIONS_OFFRE=[
  {f:'csv',l:'Export Excel des listes',p:'S'},
  {f:'demande',l:'Demande de paiement au client (lien Wave, SMS)',p:'P'},
  {f:'wpay',l:'« Payer par Wave » les producteurs',p:'P'}];
+if(GDRIVE_CLIENT_ID)FONCTIONS_OFFRE.splice(4,0,{f:'gsync',l:'Synchronisation automatique (Google Drive)',p:'S'});
 const FEAT={};FONCTIONS_OFFRE.forEach(x=>{if(x.f!=='base')FEAT[x.f]=x.p});
 function essaiDebut(){let a='';try{a=localStorage.getItem('grenier_essai')||''}catch(e){}const b=S.essai||'',d=[a,b].filter(Boolean).sort()[0]||today();
  S.essai=d;try{localStorage.setItem('grenier_essai',d)}catch(e){}return d}
@@ -554,7 +557,7 @@ const V={
   '<p style="margin:10px 0 0;font-size:13.5px;line-height:1.5"><b>Synchroniser</b> (chaque soir, ou après une journée de collecte) :<br>1. Sur le téléphone B : « Envoyer mon code ».<br>2. Sur le téléphone A : « Synchroniser avec un code ».<br>3. Puis l\'inverse, de A vers B.</p>'+
   '<div class="btns"><button class="btn" data-a="codeout">📤 Envoyer mon code</button><button class="btn" data-a="codesync">🔄 Synchroniser avec un code</button></div>'+
   '<p style="margin:0;font-size:12.5px;color:var(--gris)">Nouveau téléphone : sur A « Envoyer mon code », sur le nouveau « Remplacer par un code » (ci-dessous), puis choisissez sa lettre.</p></div>'+
-  '<h2>Sauvegarde</h2><div class="card" style="padding:14px"><p style="margin:0 0 4px;font-size:14px;color:var(--gris)">Les données restent sur cet appareil. Sauvegardez chaque semaine et gardez le fichier (WhatsApp, clé USB).</p><div class="btns"><button class="btn sec" data-a="codein">Remplacer par un code</button></div><p style="margin:0 0 4px;font-size:13px;color:var(--gris)">« Remplacer » efface les données de cet appareil et les remplace par celles du code (nouvel appareil, nouvelle version).</p><div class="btns"><button class="btn sec" data-a="export">⬇️ Fichier de sauvegarde</button><button class="btn sec" data-a="import">⬆️ Restaurer</button></div><input type="file" id="imp" accept=".json,application/json" style="display:none"><button class="btn dan sm" data-a="reset">Tout effacer et repartir de zéro</button></div>'}
+  gdSection()+'<h2>Sauvegarde</h2><div class="card" style="padding:14px"><p style="margin:0 0 4px;font-size:14px;color:var(--gris)">Les données restent sur cet appareil. Sauvegardez chaque semaine et gardez le fichier (WhatsApp, clé USB).</p><div class="btns"><button class="btn sec" data-a="codein">Remplacer par un code</button></div><p style="margin:0 0 4px;font-size:13px;color:var(--gris)">« Remplacer » efface les données de cet appareil et les remplace par celles du code (nouvel appareil, nouvelle version).</p><div class="btns"><button class="btn sec" data-a="export">⬇️ Fichier de sauvegarde</button><button class="btn sec" data-a="import">⬆️ Restaurer</button></div><input type="file" id="imp" accept=".json,application/json" style="display:none"><button class="btn dan sm" data-a="reset">Tout effacer et repartir de zéro</button></div>'}
 };
 function render(){const ls=licStat();document.body.classList.toggle('bloque',!ls.ok);if(!ls.ok)view='licence';const t=TITLES[view];$('#hsub').textContent=t?S.params.nom:'Campagne '+S.params.campagne;$('#htitle').textContent=t||S.params.nom;
  $('#back').style.display=view==='home'?'none':'block';
@@ -657,9 +660,67 @@ document.addEventListener('change',e=>{const t=e.target;
   else pr[k]=num(t.value);save()}
  else if(t.id==='imp'&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.params||!Array.isArray(d.membres))throw 0;delete d._app;S=Object.assign(empty(),d);numeros();snap();save();toast('Données restaurées');go('home')}catch(x){toast('Fichier non reconnu')}};r.readAsText(t.files[0]);t.value=''}
 });
+
+/* ====== Synchronisation automatique Google Drive (dossier caché de l'application) ====== */
+const GD={tok:null,exp:0,busy:false,timer:null,err:''};
+const gdLS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
+const gdOn=()=>!!GDRIVE_CLIENT_ID&&gdLS('grenier_gd')==='1'&&can('gsync');
+try{const t=JSON.parse(gdLS('grenier_gd_tok')||'null');if(t&&t.exp>Date.now()){GD.tok=t.t;GD.exp=t.exp}}catch(e){}
+const gdTokOk=()=>!!GD.tok&&GD.exp>Date.now()+60000;
+function gdHash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)+':'+str.length}
+function gdGIS(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.onload=()=>res();sc.onerror=()=>rej('Connexion internet nécessaire');document.head.appendChild(sc)})}
+function gdLogin(){return gdGIS().then(()=>new Promise((res,rej)=>{const c=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.appdata',
+ callback:r=>{if(r&&r.access_token){GD.tok=r.access_token;GD.exp=Date.now()+(+r.expires_in||3600)*1000;gdLS('grenier_gd_tok',JSON.stringify({t:GD.tok,exp:GD.exp}));res()}else rej('Connexion refusée')},
+ error_callback:e=>rej((e&&e.type)==='popup_closed'?'Fenêtre Google fermée':'Connexion Google impossible')});c.requestAccessToken({prompt:''})}))}
+async function gdApi(path,opt){opt=opt||{};const r=await fetch('https://www.googleapis.com/'+path,Object.assign({},opt,{headers:Object.assign({Authorization:'Bearer '+GD.tok},opt.headers||{})}));
+ if(r.status===401){GD.tok=null;gdLS('grenier_gd_tok',null);throw 'Session Google expirée'}if(!r.ok)throw 'Erreur Google Drive ('+r.status+')';return r}
+const gdSafe=()=>!($('#veil')&&$('#veil').classList.contains('on'))&&!(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+async function gdSync(manuel){
+ if(!gdOn()||GD.busy)return;if(!navigator.onLine){GD.err='Pas de connexion internet';return}if(!gdTokOk()){gdBadge();return}
+ GD.busy=true;GD.err='';gdBadge();let recu=0;
+ try{const nom=normNom(S.params.nom),pre='grenier_'+nom+'_',mine=pre+app()+'.json';
+  const L=(await (await gdApi('drive/v3/files?spaces=appDataFolder&pageSize=100&fields=files(id,name,modifiedTime)&q='+encodeURIComponent("trashed=false"))).json()).files||[];
+  const seen=JSON.parse(gdLS('grenier_gd_vu')||'{}');
+  for(const f of L){if(f.name===mine||f.name.indexOf(pre)!==0||seen[f.id]===f.modifiedTime)continue;
+   const d=await (await gdApi('drive/v3/files/'+f.id+'?alt=media')).json();
+   if(d&&d.params&&normNom(d.params.nom)===nom&&d._app!==app()){const r=fusion(d);recu+=r.add+r.upd+r.rm}
+   seen[f.id]=f.modifiedTime}
+  gdLS('grenier_gd_vu',JSON.stringify(seen));
+  const body=JSON.stringify(Object.assign({},S,{_app:app(),_gd:Date.now()})),h=gdHash(JSON.stringify(Object.assign({},S,{_app:app()}))),ex=L.find(f=>f.name===mine);
+  if(!ex||gdLS('grenier_gd_h')!==h){
+   if(ex)await gdApi('upload/drive/v3/files/'+ex.id+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body});
+   else{const fd=new FormData();fd.append('metadata',new Blob([JSON.stringify({name:mine,parents:['appDataFolder']})],{type:'application/json'}));fd.append('file',new Blob([body],{type:'application/json'}));
+    await gdApi('upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',body:fd})}
+   gdLS('grenier_gd_h',h)}
+  gdLS('grenier_gd_der',String(Date.now()));
+  if(recu){if(gdSafe())render();toast('☁️ '+recu+' changement(s) reçu(s) de l\'autre appareil')}else if(manuel)toast('☁️ Synchronisé ✓');
+ }catch(e){GD.err=typeof e==='string'?e:'Synchronisation impossible pour le moment';if(manuel)toast('☁️ '+GD.err)}
+ finally{GD.busy=false;gdBadge()}}
+function gdSoon(ms){if(!gdOn())return;clearTimeout(GD.timer);GD.timer=setTimeout(()=>gdSync(),ms||20000)}
+const gdHeure=()=>{const t=+gdLS('grenier_gd_der');if(!t)return 'jamais';const d=new Date(t);return (d.toDateString()===new Date().toDateString()?'aujourd\'hui':fd(d))+' à '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0')};
+function gdSection(){if(!GDRIVE_CLIENT_ID)return '';
+ const h='<h2>Synchronisation en ligne</h2><div class="card" style="padding:14px">';
+ if(!can('gsync'))return h+'<p style="margin:0 0 8px;font-size:14px">🔒 Synchronisation automatique par Google Drive : disponible à partir de la formule Standard.</p><button class="btn sec" data-a="go:licence">Voir les formules</button></div>';
+ if(gdLS('grenier_gd')!=='1')return h+'<p style="margin:0 0 8px;font-size:14px;line-height:1.5">Les appareils du bureau se mettent à jour tout seuls dès qu\'ils ont internet. Les données vont dans un dossier caché du <b>Google Drive de la coopérative</b> : le fournisseur n\'y a pas accès.</p><p style="margin:0 0 8px;font-size:13px;color:var(--gris)">Sur chaque appareil : utilisez <b>le même compte Gmail de la coopérative</b> et une lettre différente (ci-dessus).</p><div class="btns"><button class="btn" data-g="on">☁️ Connecter Google Drive</button></div></div>';
+ return h+'<div class="row" style="padding:4px 0"><div class="g"><div class="t">☁️ Google Drive connecté</div><div class="s" id="gdst">'+gdTxt()+'</div></div></div><div class="btns"><button class="btn" data-g="now">🔄 Synchroniser maintenant</button><button class="btn sec" data-g="off">Déconnecter</button></div><p style="margin:0;font-size:12.5px;color:var(--gris)">Par sécurité, Google demande de toucher « Synchroniser » environ une fois par heure d\'utilisation. Gardez aussi une sauvegarde chaque semaine.</p></div>'}
+function gdTxt(){return GD.busy?'Synchronisation en cours…':GD.err?'⚠️ '+esc(GD.err):!gdTokOk()?'Touchez « Synchroniser » pour reprendre':'Dernière synchro : '+gdHeure()+' · appareil '+app()}
+function gdBadge(){const e=$('#gdst');if(e)e.innerHTML=gdTxt();const b=$('#gdban');if(b)b.outerHTML=gdBan()}
+function gdBan(){if(!gdOn())return '';const ok=gdTokOk()&&!GD.err;
+ return '<div id="gdban" style="margin:0 0 12px">'+(ok?'<div style="font-size:12.5px;color:var(--gris);text-align:right">☁️ '+(GD.busy?'Synchronisation…':'Synchro '+gdHeure())+'</div>':'<button class="btn sec" data-g="now" style="width:100%">☁️ '+(GD.err&&gdTokOk()?esc(GD.err)+' · réessayer':'Toucher pour synchroniser')+'</button>')+'</div>'}
+const _renderGD=render;render=function(){_renderGD();if(view==='home'&&gdOn()){const a=$('#app');if(a&&!$('#gdban'))a.insertAdjacentHTML('afterbegin',gdBan())}};
+const _saveGD=save;save=function(){_saveGD();if(!GD.busy)gdSoon(20000)};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;const g=b.dataset.g;
+ if(g==='on'){if(!navigator.onLine){toast('Connectez-vous à internet');return}gdLogin().then(()=>{gdLS('grenier_gd','1');render();gdSync(true)}).catch(m=>toast(m))}
+ else if(g==='now'){if(gdTokOk())gdSync(true);else gdLogin().then(()=>{GD.err='';gdSync(true)}).catch(m=>toast(m))}
+ else if(g==='off'){if(!confirm('Déconnecter Google Drive sur cet appareil ? Les données restent sur le téléphone.'))return;try{if(GD.tok&&window.google)google.accounts.oauth2.revoke(GD.tok,()=>{})}catch(x){}
+  GD.tok=null;['grenier_gd','grenier_gd_tok','grenier_gd_h','grenier_gd_vu'].forEach(k=>gdLS(k,null));render();toast('Google Drive déconnecté')}});
+window.addEventListener('online',()=>gdSoon(2000));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')gdSoon(1500)});
+setInterval(()=>{if(document.visibilityState==='visible')gdSync()},180000);
 load();S.params.code?lock():render();
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register('sw.js').then(reg=>{
  reg.addEventListener('updatefound',()=>{const w=reg.installing;w&&w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)toast('Nouvelle version prête : fermez et rouvrez l\'application')})})}).catch(()=>{})}
+gdSoon(3000);
 </script>
 </body>
 </html>
