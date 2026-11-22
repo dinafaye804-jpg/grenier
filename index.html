@@ -11,6 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Grenier">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://www.googleapis.com https://accounts.google.com; img-src 'self' data: blob:; font-src 'self' data:; frame-src https://accounts.google.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Grenier – Gestion de coopérative</title>
 <style>
 :root{--sable:#F6EFE2;--papier:#FFFDF8;--encre:#1F2A44;--ocre:#D9952B;--ocre2:#F3DDB0;--mil:#3F6B3A;--mil2:#DDEBD8;--lat:#B5452C;--lat2:#F6DDD5;--gris:#7B7566;--trait:#E5DAC5}
@@ -91,7 +92,7 @@ body.bloque nav,body.bloque #back{display:none!important}
 .cond{font-size:13.5px;line-height:1.55;color:#3b3a36}.cond li{margin-bottom:6px}
 #lock{position:fixed;inset:0;background:var(--encre);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center}
 #lock h3{font:700 24px Georgia,serif;margin:0 0 4px}#lock p{color:var(--ocre);font:700 11px Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 22px}
-#lock form{width:100%;max-width:300px}#lock input{text-align:center;font-size:26px;letter-spacing:.4em;margin-bottom:12px}#lock .btn{width:100%}#lock .err{color:#F3B8A8}
+#lock form{width:100%;max-width:320px}#lock input{text-align:center;font-size:24px;letter-spacing:.25em;margin-bottom:12px}#lock .btn{width:100%}#lock .err{color:#F3B8A8;min-height:20px;margin-top:8px}#lock .note{color:#C9CEDB;font:400 13px/1.5 Arial,sans-serif;letter-spacing:0;text-transform:none;margin:10px 0 0}#lock .lien{background:none;border:0;color:#C9CEDB;text-decoration:underline;font-size:13px;margin-top:18px;cursor:pointer}#lock label{color:#C9CEDB;text-align:left;display:block}
 .exp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fac{background:#fff;border:1px solid var(--trait);border-radius:16px;padding:22px 18px}
 .fac .top{display:flex;justify-content:space-between;gap:14px;border-bottom:3px solid var(--ocre);padding-bottom:14px}
@@ -173,7 +174,30 @@ function demo(){const s=empty();s.demo=true;
   {id:uid(),date:'2026-07-01',lib:'Appui projet partenaire',sens:'Entrée',montant:500000,compte:'Banque'});
  return s}
 function numeros(){S.params=Object.assign(empty().params,S.params);S.ventes.forEach(v=>{if(!v.lignes)v.lignes=[{produit:v.produit,qte:v.qte,pu:v.pu,montant:v.montant}]});S.ventes.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(v=>{if(!v.num){const n=nextNum(new RegExp('^F-\\d{4}-'+pfx()+'(\\d+)$'),S.ventes.map(x=>x.num));v.num='F-'+v.date.slice(0,4)+'-'+pfx()+String(n).padStart(3,'0')}})}
-function load(){try{const r=localStorage.getItem(KEY);if(r){S=Object.assign(empty(),JSON.parse(r));numeros();snap();return}}catch(e){mem=true}S=demo();numeros();snap()}
+
+/* ====== Coffre : données chiffrées par le code d'accès (AES-GCM 256, clé PBKDF2) ====== */
+const VAULT={key:null,salt:null,code:null,keys:{}};
+const te=new TextEncoder(),tdc=new TextDecoder();
+const u8b64=a=>{let s='';for(let i=0;i<a.length;i+=0x8000)s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000));return btoa(s)};
+const b64u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const isBox=o=>!!(o&&o.grenier===2&&o.ct&&o.salt&&o.iv);
+async function kdf(code,salt){const k=code+'|'+(typeof salt==='string'?salt:u8b64(salt));if(VAULT.keys[k])return VAULT.keys[k];
+ const base=await crypto.subtle.importKey('raw',te.encode(code),'PBKDF2',false,['deriveKey']);
+ const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:typeof salt==='string'?b64u8(salt):salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);VAULT.keys[k]=key;return key}
+async function zip(u,on){if(!window.CompressionStream)return null;try{return new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(on?new CompressionStream('gzip'):new DecompressionStream('gzip'))).arrayBuffer())}catch(e){return null}}
+async function seal(str,key,salt,hdr){let raw=te.encode(str),z=0;const c=await zip(raw,true);if(c){raw=c;z=1}
+ const iv=crypto.getRandomValues(new Uint8Array(12)),ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,raw));
+ return Object.assign({grenier:2,z,salt:typeof salt==='string'?salt:u8b64(salt),iv:u8b64(iv),ct:u8b64(ct)},hdr||{})}
+async function unseal(box,key){let raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u8(box.iv)},key,b64u8(box.ct)));
+ if(box.z){raw=await zip(raw,false);if(!raw)throw 'zip'}return JSON.parse(tdc.decode(raw))}
+async function unsealCode(box,code){return unseal(box,await kdf(code,box.salt))}
+async function vaultSet(code,salt){salt=salt||u8b64(crypto.getRandomValues(new Uint8Array(16)));VAULT.key=await kdf(code,salt);VAULT.salt=salt;VAULT.code=code}
+let _pq=Promise.resolve();
+function persist(){if(!VAULT.key){if(S.demo){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){mem=true}}return _pq}
+ const str=JSON.stringify(S),nom=S.params.nom;
+ _pq=_pq.then(()=>seal(str,VAULT.key,VAULT.salt,{nom})).then(b=>{localStorage.setItem(KEY,JSON.stringify(b))}).catch(()=>{mem=true});return _pq}
+const userNom=()=>{try{return localStorage.getItem('grenier_user')||''}catch(e){return ''}};
+function load(){S=demo();numeros();snap()}
 const U=['','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'],T=['','','vingt','trente','quarante','cinquante','soixante','soixante','quatre-vingt','quatre-vingt'];
 function s100(n){if(n<20)return U[n];const t=Math.floor(n/10),u=n%10;if(t===7||t===9)return T[t]+(t===7&&u===1?' et ':'-')+U[10+u];if(u===0)return T[t]+(t===8?'s':'');if(u===1&&t!==8)return T[t]+' et un';return T[t]+'-'+U[u]}
 function s1000(n){const c=Math.floor(n/100),r=n%100;let s='';if(c)s=(c>1?U[c]+' ':'')+'cent'+(c>1&&!r?'s':'');if(r)s+=(s?' ':'')+s100(r);return s}
@@ -183,19 +207,28 @@ function lettres(n){n=Math.round(n);if(!n)return 'zéro';const out=[],md=Math.fl
 const COLL=['membres','parts','pesees','paiements','credits','rembs','ventes','encs','ops','ajust','emprunts','rembE'];
 let HS={};
 function snap(){HS={};COLL.forEach(c=>(S[c]||[]).forEach(r=>{const o=Object.assign({},r);delete o.maj;HS[c+':'+r.id]=JSON.stringify(o)}))}
-function stamp(){const t=Date.now();COLL.forEach(c=>(S[c]||[]).forEach(r=>{const o=Object.assign({},r);delete o.maj;const j=JSON.stringify(o),k=c+':'+r.id;if(HS[k]!==j){r.maj=t;HS[k]=j}}))}
+const JLAB={membres:'Membre',parts:'Part sociale',pesees:'Pesée',paiements:'Paiement producteur',credits:'Crédit intrant',rembs:'Remboursement crédit',ventes:'Vente / facture',encs:'Encaissement',ops:'Opération de caisse',ajust:'Ajustement de stock',emprunts:'Emprunt',rembE:'Remboursement emprunt'};
+const JCH={nom:'nom',montant:'montant',net:'poids net',brut:'poids brut',prix:'prix',date:'date',tel:'téléphone',parts:'parts',sacs:'sacs',du:'montant dû',taux:'taux',client:'client',mode:'mode',qte:'quantité',libelle:'libellé',m:'membre',echeance:'échéance',cni:'CNI',village:'village',fonction:'fonction',compte:'compte',sens:'sens'};
+function jTxt(c,r){const nm=r.nom||r.client||(r.m?M(r.m).nom:'')||r.libelle||r.objet||r.preteur||r.intrant||r.produit||'',mt=r.montant!=null?F(r.montant):(r.net!=null?r.net+' kg':'');return [r.num,nm,mt].filter(Boolean).join(' · ')}
+function jVal(k,v){if(v==null||v==='')return '∅';if(k==='m')return M(v).nom;if(typeof v==='number'&&/montant|du|prix/.test(k))return F(v);if(typeof v==='object')return '…';return String(v).slice(0,40)}
+function jDiff(o,n){const out=[];Object.keys(Object.assign({},o,n)).forEach(k=>{if(k==='maj'||k==='id'||out.length>=4)return;const a=o[k],b=n[k];if(JSON.stringify(a)!==JSON.stringify(b))out.push((JCH[k]||k)+' : '+jVal(k,a)+' → '+jVal(k,b))});return out}
+function jAdd(e){if(S.demo)return;e.id=app()+Date.now().toString(36)+Math.random().toString(36).slice(2,6);e.t=e.t||Date.now();e.app=app();e.u=userNom();S.journal=S.journal||[];S.journal.push(e);if(S.journal.length>4000)S.journal=S.journal.slice(-4000)}
+function stamp(){const t=Date.now();COLL.forEach(c=>(S[c]||[]).forEach(r=>{const o=Object.assign({},r);delete o.maj;const j=JSON.stringify(o),k=c+':'+r.id;if(HS[k]!==j){r.maj=t;
+  if(HS[k]){let old={};try{old=JSON.parse(HS[k])}catch(e){}const d=jDiff(old,o);if(d.length)jAdd({t,a:'modif',c,txt:jTxt(c,r),ch:d})}else jAdd({t,a:'ajout',c,txt:jTxt(c,r)});
+  HS[k]=j}}))}
 const APPS='ABCDEFGHIJ';
 function app(){try{return localStorage.getItem('grenier_appareil')||'A'}catch(e){return 'A'}}
 const pfx=()=>app()==='A'?'':app();
 function nextNum(re,list){let n=0;list.forEach(x=>{const m=re.exec(x||'');if(m)n=Math.max(n,+m[1])});return n+1}
-function tomb(...ids){S.del=S.del||{};const t=Date.now();ids.forEach(i=>S.del[i]=t)}
+function tomb(...ids){S.del=S.del||{};const t=Date.now();ids.forEach(i=>{S.del[i]=t;COLL.forEach(c=>{const r=(S[c]||[]).find(x=>x.id===i);if(r)jAdd({t,a:'suppr',c,txt:jTxt(c,r)})})})}
 function fusion(inc){let add=0,upd=0,rm=0;const del=Object.assign({},inc.del||{},S.del||{});S.del=del;
  COLL.forEach(c=>{const loc=S[c]||[],idx={};loc.forEach((r,i)=>idx[r.id]=i);
   (inc[c]||[]).forEach(r=>{if(del[r.id])return;const i=idx[r.id];if(i==null){loc.push(r);idx[r.id]=loc.length-1;add++}else if((+r.maj||0)>(+loc[i].maj||0)){loc[i]=r;upd++}});
   const n0=loc.length;S[c]=loc.filter(r=>!del[r.id]);rm+=n0-S[c].length});
  ((inc.params||{}).produits||[]).forEach(p=>{if(!S.params.produits.some(x=>x.n===p.n)){S.params.produits.push(p);add++}});
+ if(Array.isArray(inc.journal)){const ids=new Set((S.journal||[]).map(x=>x.id));const nw=inc.journal.filter(x=>x&&!ids.has(x.id));if(nw.length)S.journal=(S.journal||[]).concat(nw).sort((a,b)=>a.t-b.t).slice(-4000)}
  numeros();snap();save();return {add,upd,rm}}
-function save(){stamp();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){mem=true}}
+function save(){stamp();persist()}
 
 /* ---------- calculs ---------- */
 const M=id=>S.membres.find(m=>m.id===id)||{nom:'?',id};
@@ -354,14 +387,14 @@ const FONCTIONS_OFFRE=[
  {f:'base',l:'Membres, parts sociales, fiche membre',p:'E'},
  {f:'base',l:'Pesées, paiements producteurs, stock',p:'E'},
  {f:'base',l:'Caisse et banque, tableau de bord',p:'E'},
- {f:'base',l:"Code d'accès, sauvegarde et code de transfert",p:'E'},
+ {f:'base',l:"Données chiffrées, code d'accès, journal des modifications",p:'E'},
  {f:'ventes',l:'Ventes et factures (image, WhatsApp, e-mail)',p:'S'},
  {f:'credits',l:'Intrants à crédit',p:'S'},
  {f:'emprunts',l:'Emprunts de la coopérative',p:'S'},
  {f:'csv',l:'Export Excel des listes',p:'S'},
  {f:'demande',l:'Demande de paiement au client (lien Wave, SMS)',p:'P'},
  {f:'wpay',l:'« Payer par Wave » les producteurs',p:'P'}];
-if(GDRIVE_CLIENT_ID)FONCTIONS_OFFRE.splice(4,0,{f:'gsync',l:'Synchronisation automatique (Google Drive)',p:'S'});
+if(GDRIVE_CLIENT_ID)FONCTIONS_OFFRE.splice(4,0,{f:'base',l:'Synchronisation et sauvegarde Google Drive',p:'E'});
 const FEAT={};FONCTIONS_OFFRE.forEach(x=>{if(x.f!=='base')FEAT[x.f]=x.p});
 function essaiDebut(){let a='';try{a=localStorage.getItem('grenier_essai')||''}catch(e){}const b=S.essai||'',d=[a,b].filter(Boolean).sort()[0]||today();
  S.essai=d;try{localStorage.setItem('grenier_essai',d)}catch(e){}return d}
@@ -375,19 +408,34 @@ function upsell(f,msg){const o=OFFRES[FEAT[f]||'S'];$('#sheet').innerHTML='<div 
 function need(f){if(can(f))return true;upsell(f);return false}
 const VIEWFEAT={ventes:'ventes',facture:'ventes',credits:'credits',emprunts:'emprunts'};
 const fd=d=>d?String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear():'';
-function lock(){const d=document.createElement('div');d.id='lock';d.innerHTML='<p>'+esc(S.params.nom)+'</p><h3>Code d\'accès</h3><div style="height:18px"></div><form><input type="password" inputmode="numeric" autocomplete="off" aria-label="Code"><button class="btn">Ouvrir</button><div class="err"></div></form>';
- document.body.appendChild(d);const i=d.querySelector('input');d.querySelector('form').addEventListener('submit',e=>{e.preventDefault();if(hcode(i.value.trim())===S.params.code){d.remove();render()}else{d.querySelector('.err').textContent='Code incorrect';i.value='';i.focus()}});setTimeout(()=>i.focus(),50)}
+function lockUI(title,sub,inner){let d=$('#lock');if(!d){d=document.createElement('div');d.id='lock';document.body.appendChild(d)}d.innerHTML='<p>'+esc(sub||'')+'</p><h3>'+esc(title)+'</h3><div style="height:14px"></div>'+inner;return d}
+function lockFail(){let n=0;try{n=+localStorage.getItem('grenier_ko')||0}catch(e){}n++;try{localStorage.setItem('grenier_ko',n);if(n>=5)localStorage.setItem('grenier_ko_t',Date.now()+Math.min(300,30*Math.pow(2,n-5))*1000)}catch(e){}}
+function lockWait(){let t=0;try{t=+localStorage.getItem('grenier_ko_t')||0}catch(e){}return Math.max(0,Math.ceil((t-Date.now())/1000))}
+function lockOK(){try{localStorage.removeItem('grenier_ko');localStorage.removeItem('grenier_ko_t')}catch(e){}}
+function openScreen(box,legacy){const nom=legacy?S.params.nom:(box.nom||'Grenier');
+ const d=lockUI('Code d\'accès',nom,'<form><input type="password" autocomplete="current-password" aria-label="Code d\'accès"><button class="btn">Ouvrir</button><div class="err"></div></form><p class="note">Vos données sont chiffrées sur cet appareil.</p><button class="lien" type="button" id="oubli">Code oublié ?</button>');
+ const i=d.querySelector('input'),er=d.querySelector('.err'),bt=d.querySelector('.btn');
+ d.querySelector('#oubli').onclick=()=>forgotScreen(box,legacy);
+ d.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const w=lockWait();if(w){er.textContent='Trop d\'essais. Patientez '+w+' s.';return}
+  const c=i.value;if(!c)return;bt.disabled=true;bt.textContent='Ouverture…';er.textContent='';
+  try{if(legacy){if(hcode(c.trim())!==S.params.code)throw 0;await vaultSet(c.trim());delete S.params.code;numeros();snap();await persist()}
+   else{const k=await kdf(c,box.salt),o=await unseal(box,k);S=Object.assign(empty(),o);VAULT.key=k;VAULT.salt=box.salt;VAULT.code=c;numeros();snap()}
+   lockOK();d.remove();actStart();render();gdSoon(2500)}
+  catch(x){lockFail();er.textContent='Code incorrect';i.value='';i.focus()}finally{bt.disabled=false;bt.textContent='Ouvrir'}});setTimeout(()=>i.focus(),50)}
+function forgotScreen(box,legacy){const d=lockUI('Code oublié',box&&box.nom||'','<p class="note" style="text-align:left">Le code protège les données : sans lui, elles sont illisibles, même pour le fournisseur. Il n\'existe pas de récupération.<br><br>Si un autre téléphone du bureau est encore ouvert, utilisez-le. Sinon, vous pouvez effacer cet appareil et repartir de zéro.</p><div style="height:12px"></div><form><button class="btn" type="button" id="ret">Revenir</button><div style="height:10px"></div><button class="btn dan" type="button" id="wipe">Effacer cet appareil</button></form>');
+ d.querySelector('#ret').onclick=()=>openScreen(box,legacy);
+ d.querySelector('#wipe').onclick=e=>{const b=e.target;if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Confirmer : tout effacer ?';return}try{localStorage.removeItem(KEY);['grenier_gd','grenier_gd_tok','grenier_gd_h','grenier_gd_vu'].forEach(k=>localStorage.removeItem(k))}catch(x){}location.reload()}}
+function setupScreen(){const d=lockUI('Créez votre code d\'accès',S.params.nom,'<form><label>Code (6 caractères au minimum)</label><input type="password" autocomplete="new-password" id="c1"><label>Répétez le code</label><input type="password" autocomplete="new-password" id="c2"><button class="btn">Protéger mes données</button><div class="err"></div></form><p class="note" style="text-align:left">Les données de la coopérative seront chiffrées avec ce code. <b>Notez-le</b> et utilisez le même code sur tous les téléphones du bureau. Sans lui, les données sont perdues.</p>');
+ const er=d.querySelector('.err');d.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const a=d.querySelector('#c1').value,b=d.querySelector('#c2').value;
+  if(a.length<6){er.textContent='6 caractères au minimum';return}if(a!==b){er.textContent='Les deux codes sont différents';return}if(/^(\d)\1+$|^123456|^000000/.test(a)){er.textContent='Code trop simple';return}
+  await vaultSet(a);delete S.params.code;snap();await persist();d.remove();actStart();toast('Données protégées ✓');render();gdSoon(2500)});setTimeout(()=>d.querySelector('#c1').focus(),50)}
+async function lockNow(){try{await _pq}catch(e){}location.reload()}
+let _act=Date.now(),_hid=0,_actOn=false;
+function actStart(){if(_actOn)return;_actOn=true;['pointerdown','keydown','touchstart','wheel'].forEach(ev=>document.addEventListener(ev,()=>{_act=Date.now()},{passive:true}));
+ setInterval(()=>{if(VAULT.key&&Date.now()-_act>300000)lockNow()},20000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')_hid=Date.now();else if(VAULT.key&&_hid&&Date.now()-_hid>300000)lockNow()})}
 const b64=u=>{let t='';for(let i=0;i<u.length;i+=8192)t+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(t)};
 const u8=t=>{const b=atob(t),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a};
-async function mkCode(){const raw=new TextEncoder().encode(JSON.stringify(Object.assign({},S,{_app:app()})));
- if(window.CompressionStream){try{const z=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());return 'GRENIER2.'+b64(z)}catch(e){}}
- return 'GRENIER1.'+b64(raw)}
-async function readCode(c){c=c.replace(/\s/g,'');const i=c.indexOf('.'),h=c.slice(0,i);let a=u8(c.slice(i+1));
- if(h==='GRENIER2')a=new Uint8Array(await new Response(new Blob([a]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());else if(h!=='GRENIER1')throw 0;
- const d=JSON.parse(new TextDecoder().decode(a));if(!d.params||!Array.isArray(d.membres))throw 0;return d}
-function codeOut(){mkCode().then(c=>{$('#sheet').innerHTML='<div class="grab"></div><h3>Code de transfert</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Envoyez ce code à l\'autre appareil (WhatsApp à vous-même, par exemple). Là-bas : Réglages › « Synchroniser avec un code ».</p><textarea id="tc" readonly style="width:100%;height:130px;font:12px monospace;border:1.5px solid var(--trait);border-radius:12px;padding:10px;word-break:break-all">'+c+'</textarea><div class="btns"><button class="btn" data-a="codecopy">📋 Copier</button>'+(navigator.share?'<button class="btn sec" data-a="codeshare">Partager</button>':'')+'<button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on')})}
-function codeMerge(){$('#sheet').innerHTML='<div class="grab"></div><h3>Synchroniser avec un autre appareil</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Collez le code reçu de l\'autre appareil. Ses nouvelles saisies sont ajoutées aux vôtres ; rien n\'est effacé, sauf ce qui a été supprimé là-bas.</p><textarea id="tc" placeholder="Collez le code ici" style="width:100%;height:130px;font:12px monospace;border:1.5px solid var(--trait);border-radius:12px;padding:10px;word-break:break-all"></textarea><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" data-a="codemerge">🔄 Synchroniser</button></div>';$('#veil').classList.add('on')}
-function codeIn(){$('#sheet').innerHTML='<div class="grab"></div><h3>Coller un code de transfert</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Les données de cet appareil seront remplacées par celles du code.</p><textarea id="tc" placeholder="Collez le code ici" style="width:100%;height:130px;font:12px monospace;border:1.5px solid var(--trait);border-radius:12px;padding:10px;word-break:break-all"></textarea><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" data-a="codeload">Importer</button></div>';$('#veil').classList.add('on')}
 function wPay(id){const m=M(id),du=Math.max(0,mstat(m).du);
  $('#sheet').innerHTML='<div class="grab"></div><h3>Payer '+esc(m.nom)+' par Wave</h3>'+
  '<div class="prev" style="margin-top:10px"><small>Montant à envoyer</small><input id="wm" inputmode="decimal" value="'+du+'" style="background:transparent;border:0;color:#fff;font:700 28px Georgia,serif;padding:2px 0"></div>'+
@@ -425,7 +473,7 @@ function quick(){$('#sheet').innerHTML='<div class="grab"></div><h3>Que voulez-v
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1900)}
 
 /* ---------- vues ---------- */
-const TITLES={licence:'Licence',home:null,membres:'Membres',fiche:'Fiche du membre',pesees:'Pesées',paiements:'Paiements producteurs',parts:'Parts sociales',credits:'Intrants et crédits',ventes:'Ventes et factures',facture:'Facture',stock:'Magasin et stock',caisse:'Caisse et banque',emprunts:'Emprunts de la coopérative',params:'Réglages'};
+const TITLES={journal:'Journal des modifications',licence:'Licence',home:null,membres:'Membres',fiche:'Fiche du membre',pesees:'Pesées',paiements:'Paiements producteurs',parts:'Parts sociales',credits:'Intrants et crédits',ventes:'Ventes et factures',facture:'Facture',stock:'Magasin et stock',caisse:'Caisse et banque',emprunts:'Emprunts de la coopérative',params:'Réglages'};
 const del=(c,id)=>'<button class="x noprint" data-a="del:'+c+':'+id+'" aria-label="Supprimer">✕</button>';
 const list=(rows,vide)=>'<div class="card">'+(rows.length?rows.join(''):'<div class="empty">'+vide+'</div>')+'</div>';
 const byDate=a=>a.slice().sort((x,y)=>x.date<y.date?1:-1);
@@ -534,7 +582,7 @@ const V={
   '<tr style="border-top:1px solid var(--trait)"><td style="padding:8px">Appareils synchronisés</td>'+['E','S','P'].map(k=>'<td style="text-align:center;'+(ls.plan===k&&ls.mode==='licence'?'background:var(--ocre2);':'')+'">'+OFFRES[k].appareils+'</td>').join('')+'</tr>'+
   '<tr style="border-top:1px solid var(--trait)"><td style="padding:8px">Renouvellement / an</td>'+['E','S','P'].map(k=>'<td style="text-align:center">'+nb(OFFRES[k].renouv)+' F</td>').join('')+'</tr></table></div>'+
   '<h2>Obtenir une licence</h2><div class="card" style="padding:4px 14px 14px;font-size:14px">'+VENDEURS.map(v=>{const d=v.tel.replace(/\D/g,'');return '<div class="row" style="padding:12px 0;flex-wrap:wrap"><div class="av">'+esc(v.nom.split(' ').map(x=>x[0]).join(''))+'</div><div class="g" style="flex:1 1 60%"><div class="t">'+esc(v.nom)+'</div><div class="s">'+(v.mail?esc(v.mail):'Fournisseur Grenier')+'</div></div><div style="display:flex;gap:8px;width:100%;padding-left:50px"><a class="btn sm" style="text-decoration:none;background:#25D366;color:#fff;flex:1;text-align:center" target="_blank" rel="noopener" href="https://wa.me/221'+d+'?text='+encodeURIComponent('Bonjour, je souhaite une licence Grenier pour : '+S.params.nom)+'">WhatsApp</a><a class="btn sm sec" style="text-decoration:none;flex:1;text-align:center" href="tel:+221'+d+'">Appeler</a></div></div>'}).join('')+'<p style="margin:8px 0 0;color:var(--gris);font-size:13px">Donnez le nom exact de votre coopérative : la clé est liée à ce nom.</p></div>'+
-  (bl?'<h2>Sauvegarder mes données</h2><div class="card" style="padding:14px"><div class="btns" style="margin:0"><button class="btn" data-a="codeout">📋 Code de transfert</button><button class="btn sec" data-a="export">⬇️ Fichier</button></div></div>':'')+
+  (bl?'<h2>Sauvegarder mes données</h2><div class="card" style="padding:14px"><div class="btns" style="margin:0"><button class="btn sec" data-a="export">⬇️ Fichier de sauvegarde (chiffré)</button></div></div>':'')+
   '<h2>Conditions de licence</h2><div class="card cond" style="padding:6px 16px 10px"><ol style="padding-left:18px">'+
   ['Grenier est un logiciel protégé par le droit d\'auteur. Il reste la propriété de son auteur ; la coopérative en reçoit seulement le droit d\'utilisation.',
    'La licence est personnelle à la coopérative ou au GIE dont le nom figure sur la clé. Elle peut être utilisée sur les téléphones et ordinateurs des membres de son bureau.',
@@ -543,6 +591,8 @@ const V={
    'Le logiciel est un outil d\'aide à la gestion. Il ne remplace ni la comptabilité officielle, ni les contrôles internes, ni les obligations légales de la coopérative.',
    'L\'assistance et les mises à jour sont fournies selon la formule souscrite et pendant sa durée.',
    'À la fin de la licence, les données restent consultables en sauvegarde ; la saisie reprend après renouvellement.'].map(t=>'<li>'+t+'</li>').join('')+'</ol></div>'},
+ journal(){const L=(S.journal||[]).slice(-400).reverse(),ic={ajout:'➕',modif:'✏️',suppr:'🗑️'},an={ajout:'Ajout',modif:'Modification',suppr:'Suppression'};
+  return '<p style="color:var(--gris);font-size:13.5px;margin:0 0 10px">Les 400 dernières opérations, tous appareils confondus. Le journal est copié sur chaque appareil par la synchronisation.</p>'+(L.length?'<div class="card" style="padding:2px 14px">'+L.map(e=>{const d=new Date(e.t);return '<div class="row" style="align-items:flex-start;padding:10px 0"><div style="font-size:18px;width:28px">'+(ic[e.a]||'•')+'</div><div class="g"><div class="t">'+esc((an[e.a]||e.a)+' · '+(JLAB[e.c]||e.c))+'</div><div class="s">'+esc(e.txt||'')+'</div>'+((e.ch||[]).length?'<div class="s" style="color:var(--encre)">'+e.ch.map(esc).join('<br>')+'</div>':'')+'<div class="s">'+fd(d)+' '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0')+' · appareil '+esc(e.app||'?')+(e.u?' · '+esc(e.u):'')+'</div></div></div>'}).join('')+'</div>':'<div class="card" style="padding:18px;color:var(--gris)">Aucune opération pour le moment.</div>')},
  params(){const p=S.params;
   return (mem?'<div class="demo"><b>Attention :</b> ce navigateur ne garde pas les données. Faites une sauvegarde avant de fermer.</div>':'')+
   (S.demo?'<div class="demo"><b>Vous êtes sur les données d\'exemple.</b><br><button class="btn sm" data-a="reset">Effacer les exemples et commencer</button></div>':'')+
@@ -552,12 +602,11 @@ const V={
   '<h2>Produits · prix d\'achat (F/kg) · seuil d\'alerte (kg)</h2><div class="card" style="padding:14px">'+p.produits.map((x,i)=>'<div class="pgrid"><input data-pr="'+i+':n" value="'+esc(x.n)+'"><input data-pr="'+i+':prix" type="text" inputmode="decimal" value="'+x.prix+'"><input data-pr="'+i+':seuil" type="text" inputmode="decimal" value="'+x.seuil+'"><button class="x" data-a="delprod:'+i+'">✕</button></div>').join('')+'<button class="btn sm sec" data-a="addprod">+ Ajouter un produit</button></div>'+
   '<h2>Soldes de départ</h2><div class="card" style="padding:4px 14px 16px">'+COMPTES.map(c=>'<label>'+c+' (F)</label><input data-init="'+c+'" type="text" inputmode="decimal" value="'+(p.init[c]||0)+'">').join('')+'</div>'+
   '<h2>Exporter vers Excel</h2><div class="card" style="padding:14px"><p style="margin:0 0 10px;font-size:14px;color:var(--gris)">Chaque liste sort en fichier CSV, qui s\'ouvre dans Excel.</p><div class="exp">'+[['membres','Membres'],['pesees','Pesées'],['paiements','Paiements'],['parts','Parts sociales'],['credits','Crédits'],['ventes','Ventes'],['stock','Stock'],['emprunts','Emprunts'],['caisse','Journal de caisse']].map(x=>'<button class="btn sm sec" data-a="csv:'+x[0]+'">'+x[1]+lk('csv')+'</button>').join('')+'</div></div>'+
-  '<h2>Code d\'accès</h2><div class="card" style="padding:4px 14px 16px"><label>'+(p.code?'Nouveau code':'Choisir un code (4 chiffres au minimum)')+'</label><input id="nc" type="password" inputmode="numeric" autocomplete="off"><div class="btns"><button class="btn" data-a="setcode">'+(p.code?'Changer le code':'Activer le code')+'</button>'+(p.code?'<button class="btn sec" data-a="lock">🔒 Verrouiller</button>':'')+'</div>'+(p.code?'<button class="btn dan sm" data-a="nocode">Supprimer le code</button>':'<p style="margin:0;font-size:13px;color:var(--gris)">Le code sera demandé à chaque ouverture. Notez-le : il n\'y a pas de récupération.</p>')+'</div>'+
-  '<h2>Plusieurs appareils</h2><div class="card" style="padding:14px"><p style="margin:0 0 6px;font-size:14px">Chaque téléphone du bureau porte une lettre différente. Votre formule permet <b>'+(planAct()?OFFRES[planAct()].appareils:0)+' appareil(s)</b>.</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+APPS.slice(0,planAct()?OFFRES[planAct()].appareils:1).split('').map(x=>'<button class="btn sm'+(x===app()?'':' sec')+'" data-a="setapp:'+x+'">'+x+(x==='A'?' (principal)':'')+'</button>').join('')+'</div>'+
-  '<p style="margin:10px 0 0;font-size:13.5px;line-height:1.5"><b>Synchroniser</b> (chaque soir, ou après une journée de collecte) :<br>1. Sur le téléphone B : « Envoyer mon code ».<br>2. Sur le téléphone A : « Synchroniser avec un code ».<br>3. Puis l\'inverse, de A vers B.</p>'+
-  '<div class="btns"><button class="btn" data-a="codeout">📤 Envoyer mon code</button><button class="btn" data-a="codesync">🔄 Synchroniser avec un code</button></div>'+
-  '<p style="margin:0;font-size:12.5px;color:var(--gris)">Nouveau téléphone : sur A « Envoyer mon code », sur le nouveau « Remplacer par un code » (ci-dessous), puis choisissez sa lettre.</p></div>'+
-  gdSection()+'<h2>Sauvegarde</h2><div class="card" style="padding:14px"><p style="margin:0 0 4px;font-size:14px;color:var(--gris)">Les données restent sur cet appareil. Sauvegardez chaque semaine et gardez le fichier (WhatsApp, clé USB).</p><div class="btns"><button class="btn sec" data-a="codein">Remplacer par un code</button></div><p style="margin:0 0 4px;font-size:13px;color:var(--gris)">« Remplacer » efface les données de cet appareil et les remplace par celles du code (nouvel appareil, nouvelle version).</p><div class="btns"><button class="btn sec" data-a="export">⬇️ Fichier de sauvegarde</button><button class="btn sec" data-a="import">⬆️ Restaurer</button></div><input type="file" id="imp" accept=".json,application/json" style="display:none"><button class="btn dan sm" data-a="reset">Tout effacer et repartir de zéro</button></div>'}
+  (S.demo?'':'<h2>Code d\'accès</h2><div class="card" style="padding:4px 14px 16px"><p style="margin:10px 0 4px;font-size:13.5px;color:var(--gris)">🔐 Les données sont chiffrées avec ce code. L\'application se verrouille après 5 minutes sans utilisation.</p><label>Code actuel</label><input id="oc" type="password" autocomplete="current-password"><label>Nouveau code (6 caractères au minimum)</label><input id="nc" type="password" autocomplete="new-password"><label>Répétez le nouveau code</label><input id="nc2" type="password" autocomplete="new-password"><div class="btns"><button class="btn" data-a="setcode">Changer le code</button><button class="btn sec" data-a="lock">🔒 Verrouiller</button></div><p style="margin:0;font-size:12.5px;color:var(--gris)">Utilisez le même code sur tous les téléphones du bureau.</p></div>')+
+  '<h2>Cet appareil</h2><div class="card" style="padding:14px"><label style="margin-top:0">Personne qui utilise cet appareil (pour le journal)</label><input id="unom" value="'+esc(userNom())+'" placeholder="ex. Awa, trésorière"><p style="margin:12px 0 6px;font-size:14px">Lettre de l\'appareil. Votre formule permet <b>'+(planAct()?OFFRES[planAct()].appareils:0)+' appareil(s)</b>.</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+APPS.slice(0,planAct()?OFFRES[planAct()].appareils:1).split('').map(x=>'<button class="btn sm'+(x===app()?'':' sec')+'" data-a="setapp:'+x+'">'+x+(x==='A'?' (principal)':'')+'</button>').join('')+'</div>'+
+  '<p style="margin:10px 0 0;font-size:12.5px;color:var(--gris)">Chaque téléphone porte une lettre différente. Les appareils se mettent à jour entre eux par Google Drive (ci-dessous).</p></div>'+
+  (S.demo?'':'<h2>Journal des modifications</h2><div class="card" style="padding:4px 0"><div class="row" data-a="journal" style="cursor:pointer"><div class="av">📜</div><div class="g"><div class="t">Qui a changé quoi, et quand</div><div class="s">'+((S.journal||[]).length)+' opération(s) enregistrée(s)</div></div><span>›</span></div></div>')+
+  gdSection()+'<h2>Sauvegarde</h2><div class="card" style="padding:14px"><p style="margin:0 0 4px;font-size:14px;color:var(--gris)">Le fichier de sauvegarde est <b>chiffré avec le code d\'accès</b> : il faut ce code pour le restaurer. Gardez-le en lieu sûr (clé USB, Drive).</p><div class="btns"><button class="btn sec" data-a="export">⬇️ Fichier de sauvegarde</button><button class="btn sec" data-a="import">⬆️ Restaurer</button></div><input type="file" id="imp" accept=".json,.grenier,application/json" style="display:none"><button class="btn dan sm" data-a="reset">Tout effacer et repartir de zéro</button></div>'}
 };
 function render(){const ls=licStat();document.body.classList.toggle('bloque',!ls.ok);if(!ls.ok)view='licence';const t=TITLES[view];$('#hsub').textContent=t?S.params.nom:'Campagne '+S.params.campagne;$('#htitle').textContent=t||S.params.nom;
  $('#back').style.display=view==='home'?'none':'block';
@@ -597,8 +646,11 @@ document.addEventListener('click',e=>{
  else if(a==='vadd'){$('#vl').insertAdjacentHTML('beforeend',vRow());vPrev()}
  else if(a==='vdel'){if(document.querySelectorAll('.vrow').length>1){b.closest('.vrow').remove();vPrev()}}
  else if(a==='csv')csvOut(p1);
- else if(a==='lock')lock();
- else if(a==='setcode'){const c=$('#nc').value.trim();if(!/^\d{4,}$/.test(c)){toast('4 chiffres au minimum');return}S.params.code=hcode(c);save();toast('Code activé');render()}
+ else if(a==='lock')lockNow();
+ else if(a==='journal')go('journal');
+ else if(a==='setcode'){const o=$('#oc').value,n1=$('#nc').value,n2=$('#nc2').value;
+  if(o!==VAULT.code){toast('Code actuel incorrect');return}if(n1.length<6){toast('6 caractères au minimum');return}if(n1!==n2){toast('Les deux nouveaux codes sont différents');return}
+  vaultSet(n1).then(()=>persist()).then(()=>{gdLS('grenier_gd_h',null);toast('Code changé ✓ — changez-le aussi sur les autres téléphones');render();gdSoon(2000)})}
  else if(a==='dem'){const v=S.ventes.find(x=>x.id===arg);if(!v)return;const txt=demTxt(v),tel=telSN(cliTel(v));
   if(p1==='voir'){$('#sheet').innerHTML='<div class="grab"></div><h3>Message envoyé au client</h3><textarea id="tc" readonly style="width:100%;height:260px;font:14px Arial,sans-serif;border:1.5px solid var(--trait);border-radius:12px;padding:10px">'+esc(txt)+'</textarea><div class="btns"><button class="btn" data-a="codecopy">📋 Copier</button><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on');return}
   if(p1==='smsok'){v.demande=today();save();return}
@@ -620,22 +672,10 @@ document.addEventListener('click',e=>{
   if(!c.ok){$('#lerr').textContent='Clé non valable pour ce nom. Vérifiez le nom exact et la clé.';return}
   if(c.expire){$('#lerr').textContent='Cette clé a expiré le '+fd(c.fin)+'.';return}
   S.params.nom=n;S.licence={cle:c.key,date:today()};save();toast('Licence activée ✓');go('home')}
- else if(a==='codeout')codeOut();
- else if(a==='codein')codeIn();
- else if(a==='codesync')codeMerge();
- else if(a==='codemerge'){readCode($('#tc').value).then(d=>{if(d._app&&d._app===app()){$('#err').textContent='Ce code vient d\'un appareil qui porte aussi la lettre '+app()+'. Donnez une lettre différente à chaque appareil (Réglages › Plusieurs appareils), puis recommencez.';return}
-  if(normNom(d.params&&d.params.nom)!==normNom(S.params.nom)){$('#err').textContent='Ce code vient d\'une autre coopérative ('+(d.params&&d.params.nom||'?')+').';return}
-  const r=fusion(d);$('#sheet').innerHTML='<div class="grab"></div><h3>Synchronisation terminée ✓</h3><div class="card" style="padding:4px 14px;margin:12px 0"><div class="row"><div class="g">Ajoutés</div><b>'+r.add+'</b></div><div class="row"><div class="g">Mis à jour</div><b>'+r.upd+'</b></div><div class="row"><div class="g">Supprimés</div><b>'+r.rm+'</b></div></div><p style="font-size:14px;color:var(--gris)">Pour que l\'autre appareil reçoive aussi vos saisies, envoyez-lui maintenant votre code.</p><div class="btns"><button class="btn" data-a="codeout">📤 Envoyer mon code</button><button class="btn sec" data-a="close">Fermer</button></div>';render()})
-  .catch(()=>{$('#err').textContent='Code non reconnu ou incomplet'})}
  else if(a==='setapp'){try{localStorage.setItem('grenier_appareil',p1)}catch(e){}toast('Cet appareil : '+p1);render()}
- else if(a==='codecopy'){const t=$('#tc'),ok=()=>toast('Code copié ✓'),fb=()=>{t.focus();t.select();t.setSelectionRange(0,t.value.length);try{document.execCommand('copy')?ok():toast('Sélectionnez puis copiez le code')}catch(e){toast('Sélectionnez puis copiez le code')}};
-  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(ok,fb);else fb()}
- else if(a==='codeshare')navigator.share({title:'Code de transfert – '+S.params.nom,text:$('#tc').value}).catch(()=>{});
- else if(a==='del'||a==='reset'||a==='delprod'||a==='nocode'||a==='codeload'){
+ else if(a==='del'||a==='reset'||a==='delprod'){
   if(!b.classList.contains('sure')){b.classList.add('sure');b.dataset.o=b.textContent;b.textContent='Confirmer ?';setTimeout(()=>{if(b.isConnected){b.classList.remove('sure');b.textContent=b.dataset.o}},3000);return}
-  if(a==='codeload'){readCode($('#tc').value).then(d=>{delete d._app;S=Object.assign(empty(),d);numeros();snap();save();closeSheet();toast('Données importées ✓');go('home')}).catch(()=>{$('#err').textContent='Code non reconnu ou incomplet';b.classList.remove('sure');b.textContent='Importer'});return}
-  if(a==='nocode'){S.params.code='';save();toast('Code supprimé');render();return}
-  if(a==='reset'){const keep={licence:S.licence,essai:S.essai,nom:S.licence?S.params.nom:null};S=empty();if(keep.licence){S.licence=keep.licence;S.params.nom=keep.nom}S.essai=keep.essai;snap();save();toast('Prêt pour vos données');go('params');return}
+  if(a==='reset'){const keep={licence:S.licence,essai:S.essai,nom:S.licence?S.params.nom:null};S=empty();if(keep.licence){S.licence=keep.licence;S.params.nom=keep.nom}S.essai=keep.essai;snap();if(VAULT.key){save();toast('Prêt pour vos données');go('params')}else{go('params');setupScreen()}return}
   if(a==='delprod'){const pr=S.params.produits[+p1];if(S.pesees.some(x=>x.produit===pr.n)||S.ventes.some(v=>v.lignes.some(l=>l.produit===pr.n))||S.ajust.some(x=>x.produit===pr.n)){toast('Produit déjà utilisé');render();return}S.params.produits.splice(+p1,1);save();render();return}
   if(p1==='membres'){if(USED(p2)){toast('Impossible : ce membre a des opérations');render();return}S.membres=S.membres.filter(x=>x.id!==p2);tomb(p2);save();go('membres');return}
   S[p1]=S[p1].filter(x=>x.id!==p2);tomb(p2);
@@ -644,10 +684,13 @@ document.addEventListener('click',e=>{
   if(p1==='emprunts'){tomb(...S.rembE.filter(x=>x.e===p2).map(x=>x.id));S.rembE=S.rembE.filter(x=>x.e!==p2)}
   save();toast('Supprimé');render()}
  else if(a==='addprod'){S.params.produits.push({n:'Nouveau produit',prix:0,seuil:0});save();render()}
- else if(a==='export'){dl('sauvegarde_cooperative_'+today()+'.json','application/json',JSON.stringify(S));toast('Sauvegarde créée')}
+ else if(a==='export'){const nm='sauvegarde_'+normNom(S.params.nom).toLowerCase().slice(0,20)+'_'+today()+'.json';
+  if(!VAULT.key){dl(nm,'application/json',JSON.stringify(S));toast('Sauvegarde créée (exemple, non chiffrée)');return}
+  seal(JSON.stringify(Object.assign({},S,{_app:app()})),VAULT.key,VAULT.salt,{nom:S.params.nom,type:'sauvegarde'}).then(b=>{dl(nm,'application/json',JSON.stringify(b));toast('Sauvegarde chiffrée créée ✓')})}
  else if(a==='import')$('#imp').click();
 });
 document.addEventListener('change',e=>{const t=e.target;
+ if(t.id==='unom'){try{localStorage.setItem('grenier_user',t.value.trim().slice(0,40))}catch(x){}toast('Enregistré');return}
  if(t.dataset.p){const k=t.dataset.p;if(k==='nom'&&licStat().mode==='licence'){t.value=S.params.nom;return}if(k==='waveLink'&&t.value.trim()&&!okLink(t.value.trim())){toast('Le lien doit commencer par https://');t.value=S.params.waveLink||'';return}
   S.params[k]=(k==='part'||k==='tare'||k==='tauxCredit')?num(t.value):t.value.trim();save();if(k==='nom')$('#hsub').textContent=S.params.nom}
  else if(t.dataset.v){const v=S.ventes.find(x=>x.id===arg);if(!v)return;const val=t.value.trim();
@@ -658,13 +701,16 @@ document.addEventListener('change',e=>{const t=e.target;
   if(k==='n'){const nv=t.value.trim();if(!nv||S.params.produits.some((x,j)=>j!==+i&&x.n===nv)){toast('Nom déjà utilisé ou vide');t.value=pr.n;return}
    S.pesees.forEach(x=>{if(x.produit===pr.n)x.produit=nv});S.ventes.forEach(v=>v.lignes.forEach(l=>{if(l.produit===pr.n)l.produit=nv}));S.ajust.forEach(x=>{if(x.produit===pr.n)x.produit=nv});pr.n=nv}
   else pr[k]=num(t.value);save()}
- else if(t.id==='imp'&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.params||!Array.isArray(d.membres))throw 0;delete d._app;S=Object.assign(empty(),d);numeros();snap();save();toast('Données restaurées');go('home')}catch(x){toast('Fichier non reconnu')}};r.readAsText(t.files[0]);t.value=''}
+ else if(t.id==='imp'&&t.files[0]){const r=new FileReader();r.onload=()=>{let d;try{d=JSON.parse(r.result)}catch(x){toast('Fichier non reconnu');return}
+   const apply=(o,code,salt)=>{if(!o.params||!Array.isArray(o.membres)){toast('Fichier non reconnu');return}delete o._app;S=Object.assign(empty(),o);S.demo=false;numeros();snap();
+    (code?vaultSet(code,salt):Promise.resolve()).then(()=>{if(VAULT.key){persist();toast('Données restaurées ✓');go('home')}else{go('home');setupScreen()}})};
+   if(isBox(d)){if(VAULT.key&&d.salt===VAULT.salt){unseal(d,VAULT.key).then(o=>apply(o)).catch(()=>askCode(d,apply));return}askCode(d,apply)}else apply(d)};r.readAsText(t.files[0]);t.value=''}
 });
 
-/* ====== Synchronisation automatique Google Drive (dossier caché de l'application) ====== */
-const GD={tok:null,exp:0,busy:false,timer:null,err:''};
+/* ====== Synchronisation et sauvegarde Google Drive (dossier caché, fichiers chiffrés par le code d'accès) ====== */
+const GD={tok:null,exp:0,busy:false,timer:null,err:'',coops:null};
 const gdLS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
-const gdOn=()=>!!GDRIVE_CLIENT_ID&&gdLS('grenier_gd')==='1'&&can('gsync');
+const gdOn=()=>!!GDRIVE_CLIENT_ID&&gdLS('grenier_gd')==='1';
 try{const t=JSON.parse(gdLS('grenier_gd_tok')||'null');if(t&&t.exp>Date.now()){GD.tok=t.t;GD.exp=t.exp}}catch(e){}
 const gdTokOk=()=>!!GD.tok&&GD.exp>Date.now()+60000;
 function gdHash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)+':'+str.length}
@@ -675,52 +721,78 @@ function gdLogin(){return gdGIS().then(()=>new Promise((res,rej)=>{const c=googl
 async function gdApi(path,opt){opt=opt||{};const r=await fetch('https://www.googleapis.com/'+path,Object.assign({},opt,{headers:Object.assign({Authorization:'Bearer '+GD.tok},opt.headers||{})}));
  if(r.status===401){GD.tok=null;gdLS('grenier_gd_tok',null);throw 'Session Google expirée'}if(!r.ok)throw 'Erreur Google Drive ('+r.status+')';return r}
 const gdSafe=()=>!($('#veil')&&$('#veil').classList.contains('on'))&&!(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+const gdList=async()=>(await (await gdApi('drive/v3/files?spaces=appDataFolder&pageSize=200&fields=files(id,name,modifiedTime)&q='+encodeURIComponent("trashed=false"))).json()).files||[];
+const gdGet=async id=>(await gdApi('drive/v3/files/'+id+'?alt=media')).json();
+const gdParse=n=>{const m=/^grenier_([A-Z0-9]+)_([A-J])\.json$/.exec(n||'');return m?{coop:m[1],app:m[2]}:null};
+async function gdOpen(d){if(!isBox(d))return d;if(d.salt===VAULT.salt)return unseal(d,VAULT.key);return unsealCode(d,VAULT.code)}
 async function gdSync(manuel){
- if(!gdOn()||GD.busy)return;if(!navigator.onLine){GD.err='Pas de connexion internet';return}if(!gdTokOk()){gdBadge();return}
- GD.busy=true;GD.err='';gdBadge();let recu=0;
+ if(!gdOn()||GD.busy||S.demo||!VAULT.key)return;if(!navigator.onLine){GD.err='Pas de connexion internet';gdBadge();return}if(!gdTokOk()){gdBadge();return}
+ GD.busy=true;GD.err='';gdBadge();let recu=0;const pbs=[];
  try{const nom=normNom(S.params.nom),pre='grenier_'+nom+'_',mine=pre+app()+'.json';
-  const L=(await (await gdApi('drive/v3/files?spaces=appDataFolder&pageSize=100&fields=files(id,name,modifiedTime)&q='+encodeURIComponent("trashed=false"))).json()).files||[];
-  const seen=JSON.parse(gdLS('grenier_gd_vu')||'{}');
+  const L=await gdList(),seen=JSON.parse(gdLS('grenier_gd_vu')||'{}');
   for(const f of L){if(f.name===mine||f.name.indexOf(pre)!==0||seen[f.id]===f.modifiedTime)continue;
-   const d=await (await gdApi('drive/v3/files/'+f.id+'?alt=media')).json();
+   let d;try{d=await gdOpen(await gdGet(f.id))}catch(x){pbs.push((gdParse(f.name)||{}).app||'?');continue}
    if(d&&d.params&&normNom(d.params.nom)===nom&&d._app!==app()){const r=fusion(d);recu+=r.add+r.upd+r.rm}
    seen[f.id]=f.modifiedTime}
   gdLS('grenier_gd_vu',JSON.stringify(seen));
-  const body=JSON.stringify(Object.assign({},S,{_app:app(),_gd:Date.now()})),h=gdHash(JSON.stringify(Object.assign({},S,{_app:app()}))),ex=L.find(f=>f.name===mine);
-  if(!ex||gdLS('grenier_gd_h')!==h){
+  const str=JSON.stringify(Object.assign({},S,{_app:app()})),h=gdHash(str),ex=L.find(f=>f.name===mine);
+  if(!ex||gdLS('grenier_gd_h')!==h){const body=JSON.stringify(await seal(str,VAULT.key,VAULT.salt,{nom:S.params.nom,app:app()}));
    if(ex)await gdApi('upload/drive/v3/files/'+ex.id+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body});
    else{const fd=new FormData();fd.append('metadata',new Blob([JSON.stringify({name:mine,parents:['appDataFolder']})],{type:'application/json'}));fd.append('file',new Blob([body],{type:'application/json'}));
     await gdApi('upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',body:fd})}
    gdLS('grenier_gd_h',h)}
   gdLS('grenier_gd_der',String(Date.now()));
-  if(recu){if(gdSafe())render();toast('☁️ '+recu+' changement(s) reçu(s) de l\'autre appareil')}else if(manuel)toast('☁️ Synchronisé ✓');
+  if(pbs.length)GD.err='Code d\'accès différent sur l\'appareil '+pbs.join(', ')+' : utilisez le même code partout';
+  if(recu){if(gdSafe())render();toast('☁️ '+recu+' changement(s) reçu(s)')}else if(manuel&&!pbs.length)toast('☁️ Synchronisé et sauvegardé ✓');
  }catch(e){GD.err=typeof e==='string'?e:'Synchronisation impossible pour le moment';if(manuel)toast('☁️ '+GD.err)}
  finally{GD.busy=false;gdBadge()}}
-function gdSoon(ms){if(!gdOn())return;clearTimeout(GD.timer);GD.timer=setTimeout(()=>gdSync(),ms||20000)}
+/* Nouveau téléphone : récupérer la coopérative depuis Drive */
+async function gdJoinList(){const L=await gdList(),g={};for(const f of L){const p=gdParse(f.name);if(!p)continue;(g[p.coop]=g[p.coop]||[]).push(Object.assign({},f,p))}
+ GD.coops=Object.keys(g).map(k=>({coop:k,files:g[k].sort((a,b)=>a.modifiedTime<b.modifiedTime?1:-1)}));return GD.coops}
+function gdJoinSheet(){const C=GD.coops||[];
+ if(!C.length){$('#sheet').innerHTML='<div class="grab"></div><h3>Aucune coopérative trouvée</h3><p style="font-size:14px;color:var(--gris)">Ce compte Google ne contient pas encore de données Grenier. Vérifiez que c\'est bien le Gmail de la coopérative, ou démarrez avec vos données (Réglages).</p><div class="btns"><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on');return}
+ $('#sheet').innerHTML='<div class="grab"></div><h3>Récupérer ma coopérative</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Les données de l\'exemple seront remplacées par celles de la coopérative.</p>'+(C.length>1?'<label>Coopérative</label><select id="jc">'+C.map((c,i)=>'<option value="'+i+'">'+esc(c.coop)+' ('+c.files.length+' appareil(s))</option>').join('')+'</select>':'<p style="margin:0 0 6px"><b>'+esc(C[0].coop)+'</b> · '+C[0].files.length+' appareil(s)</p>')+
+  '<label>Code d\'accès de la coopérative</label><input id="jk" type="password" autocomplete="current-password"><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" id="jok">Récupérer</button></div>';$('#veil').classList.add('on');
+ $('#jok').onclick=async()=>{const c=C[$('#jc')?+$('#jc').value:0],code=$('#jk').value,b=$('#jok');b.disabled=true;b.textContent='Récupération…';
+  try{const used=c.files.map(f=>f.app),first=await gdGet(c.files[0].id);if(!isBox(first))throw 'fmt';const o=await unsealCode(first,code);
+   const plan=licCheck(o.params.nom,(o.licence||{}).cle).ok?licCheck(o.params.nom,o.licence.cle).plan:'P',lim=OFFRES[plan].appareils;
+   const free=APPS.split('').find(x=>!used.includes(x));if(!free||used.length>=lim){$('#err').textContent='Limite atteinte : la formule '+OFFRES[plan].nom+' permet '+lim+' appareil(s). Libérez un appareil ou changez de formule.';b.disabled=false;b.textContent='Récupérer';return}
+   delete o._app;S=Object.assign(empty(),o);S.demo=false;try{localStorage.setItem('grenier_appareil',free)}catch(x){}
+   await vaultSet(code,first.salt);numeros();snap();gdLS('grenier_gd_vu',null);gdLS('grenier_gd_h',null);await persist();closeSheet();actStart();toast('Coopérative récupérée ✓ · cet appareil : '+free);go('home');gdSync(true)}
+  catch(x){$('#err').textContent='Code incorrect ou données illisibles';b.disabled=false;b.textContent='Récupérer'}}}
+function gdSoon(ms){if(!gdOn()||S.demo||!VAULT.key)return;clearTimeout(GD.timer);GD.timer=setTimeout(()=>gdSync(),ms||20000)}
 const gdHeure=()=>{const t=+gdLS('grenier_gd_der');if(!t)return 'jamais';const d=new Date(t);return (d.toDateString()===new Date().toDateString()?'aujourd\'hui':fd(d))+' à '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0')};
 function gdSection(){if(!GDRIVE_CLIENT_ID)return '';
- const h='<h2>Synchronisation en ligne</h2><div class="card" style="padding:14px">';
- if(!can('gsync'))return h+'<p style="margin:0 0 8px;font-size:14px">🔒 Synchronisation automatique par Google Drive : disponible à partir de la formule Standard.</p><button class="btn sec" data-a="go:licence">Voir les formules</button></div>';
- if(gdLS('grenier_gd')!=='1')return h+'<p style="margin:0 0 8px;font-size:14px;line-height:1.5">Les appareils du bureau se mettent à jour tout seuls dès qu\'ils ont internet. Les données vont dans un dossier caché du <b>Google Drive de la coopérative</b> : le fournisseur n\'y a pas accès.</p><p style="margin:0 0 8px;font-size:13px;color:var(--gris)">Sur chaque appareil : utilisez <b>le même compte Gmail de la coopérative</b> et une lettre différente (ci-dessus).</p><div class="btns"><button class="btn" data-g="on">☁️ Connecter Google Drive</button></div></div>';
- return h+'<div class="row" style="padding:4px 0"><div class="g"><div class="t">☁️ Google Drive connecté</div><div class="s" id="gdst">'+gdTxt()+'</div></div></div><div class="btns"><button class="btn" data-g="now">🔄 Synchroniser maintenant</button><button class="btn sec" data-g="off">Déconnecter</button></div><p style="margin:0;font-size:12.5px;color:var(--gris)">Par sécurité, Google demande de toucher « Synchroniser » environ une fois par heure d\'utilisation. Gardez aussi une sauvegarde chaque semaine.</p></div>'}
+ const h='<h2>Synchronisation et sauvegarde Google Drive</h2><div class="card" style="padding:14px">';
+ if(S.demo)return h+'<p style="margin:0 0 8px;font-size:14px;line-height:1.5"><b>Nouveau téléphone ?</b> Connectez le Gmail de la coopérative pour récupérer ses données (il faut le code d\'accès).</p><div class="btns"><button class="btn" data-g="join">☁️ Récupérer ma coopérative depuis Google Drive</button></div></div>';
+ if(gdLS('grenier_gd')!=='1')return h+'<p style="margin:0 0 8px;font-size:14px;line-height:1.5">Les téléphones du bureau se mettent à jour tout seuls dès qu\'ils ont internet, et une copie <b>chiffrée</b> est gardée dans le <b>Google Drive de la coopérative</b> (dossier caché). Le fournisseur n\'y a pas accès.</p><p style="margin:0 0 8px;font-size:13px;color:var(--gris)">Sur chaque téléphone : <b>le même Gmail</b>, <b>le même code d\'accès</b> et une lettre différente.</p><div class="btns"><button class="btn" data-g="on">☁️ Connecter Google Drive</button></div></div>';
+ return h+'<div class="row" style="padding:4px 0"><div class="g"><div class="t">☁️ Google Drive connecté</div><div class="s" id="gdst">'+gdTxt()+'</div></div></div><div class="btns"><button class="btn" data-g="now">🔄 Synchroniser maintenant</button><button class="btn sec" data-g="off">Déconnecter</button></div><p style="margin:0;font-size:12.5px;color:var(--gris)">Par sécurité, Google demande de toucher « Synchroniser » environ une fois par heure d\'utilisation.</p></div>'}
 function gdTxt(){return GD.busy?'Synchronisation en cours…':GD.err?'⚠️ '+esc(GD.err):!gdTokOk()?'Touchez « Synchroniser » pour reprendre':'Dernière synchro : '+gdHeure()+' · appareil '+app()}
 function gdBadge(){const e=$('#gdst');if(e)e.innerHTML=gdTxt();const b=$('#gdban');if(b)b.outerHTML=gdBan()}
-function gdBan(){if(!gdOn())return '';const ok=gdTokOk()&&!GD.err;
+function gdBan(){if(!gdOn()||S.demo)return '';const ok=gdTokOk()&&!GD.err;
  return '<div id="gdban" style="margin:0 0 12px">'+(ok?'<div style="font-size:12.5px;color:var(--gris);text-align:right">☁️ '+(GD.busy?'Synchronisation…':'Synchro '+gdHeure())+'</div>':'<button class="btn sec" data-g="now" style="width:100%">☁️ '+(GD.err&&gdTokOk()?esc(GD.err)+' · réessayer':'Toucher pour synchroniser')+'</button>')+'</div>'}
-const _renderGD=render;render=function(){_renderGD();if(view==='home'&&gdOn()){const a=$('#app');if(a&&!$('#gdban'))a.insertAdjacentHTML('afterbegin',gdBan())}};
+const _renderGD=render;render=function(){_renderGD();if(view==='home'&&gdOn()&&!S.demo){const a=$('#app');if(a&&!$('#gdban'))a.insertAdjacentHTML('afterbegin',gdBan())}};
 const _saveGD=save;save=function(){_saveGD();if(!GD.busy)gdSoon(20000)};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;const g=b.dataset.g;
  if(g==='on'){if(!navigator.onLine){toast('Connectez-vous à internet');return}gdLogin().then(()=>{gdLS('grenier_gd','1');render();gdSync(true)}).catch(m=>toast(m))}
+ else if(g==='join'){if(!navigator.onLine){toast('Connectez-vous à internet');return}gdLogin().then(()=>{gdLS('grenier_gd','1');return gdJoinList()}).then(()=>gdJoinSheet()).catch(m=>toast(typeof m==='string'?m:'Google Drive inaccessible'))}
  else if(g==='now'){if(gdTokOk())gdSync(true);else gdLogin().then(()=>{GD.err='';gdSync(true)}).catch(m=>toast(m))}
  else if(g==='off'){if(!confirm('Déconnecter Google Drive sur cet appareil ? Les données restent sur le téléphone.'))return;try{if(GD.tok&&window.google)google.accounts.oauth2.revoke(GD.tok,()=>{})}catch(x){}
   GD.tok=null;['grenier_gd','grenier_gd_tok','grenier_gd_h','grenier_gd_vu'].forEach(k=>gdLS(k,null));render();toast('Google Drive déconnecté')}});
 window.addEventListener('online',()=>gdSoon(2000));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')gdSoon(1500)});
 setInterval(()=>{if(document.visibilityState==='visible')gdSync()},180000);
-load();S.params.code?lock():render();
+function askCode(box,apply){$('#sheet').innerHTML='<div class="grab"></div><h3>Sauvegarde protégée</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Saisissez le code d\'accès utilisé quand la sauvegarde de « '+esc(box.nom||'')+' » a été faite.</p><input id="akc" type="password" autocomplete="off"><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" id="akok">Restaurer</button></div>';$('#veil').classList.add('on');
+ $('#akok').onclick=()=>{const c=$('#akc').value;$('#akok').disabled=true;unsealCode(box,c).then(o=>{closeSheet();apply(o,c,box.salt)}).catch(()=>{$('#err').textContent='Code incorrect';$('#akok').disabled=false})}}
+function boot(){let o=null;try{const r=localStorage.getItem(KEY);if(r)o=JSON.parse(r)}catch(e){mem=true}
+ if(isBox(o)){S=demo();numeros();snap();openScreen(o,false);return}
+ if(o){S=Object.assign(empty(),o);numeros();snap()}else load();
+ if(S.demo){render();return}
+ if(S.params.code){openScreen(null,true);return}
+ render();setupScreen()}
+boot();
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register('sw.js').then(reg=>{
  reg.addEventListener('updatefound',()=>{const w=reg.installing;w&&w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)toast('Nouvelle version prête : fermez et rouvrez l\'application')})})}).catch(()=>{})}
-gdSoon(3000);
 </script>
 </body>
 </html>
