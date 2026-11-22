@@ -748,17 +748,23 @@ async function gdSync(manuel){
  finally{GD.busy=false;gdBadge()}}
 /* Nouveau téléphone : récupérer la coopérative depuis Drive */
 async function gdJoinList(){const L=await gdList(),g={};for(const f of L){const p=gdParse(f.name);if(!p)continue;(g[p.coop]=g[p.coop]||[]).push(Object.assign({},f,p))}
- GD.coops=Object.keys(g).map(k=>({coop:k,files:g[k].sort((a,b)=>a.modifiedTime<b.modifiedTime?1:-1)}));return GD.coops}
+ GD.coops=Object.keys(g).map(k=>({coop:k,files:g[k].sort((a,b)=>a.modifiedTime<b.modifiedTime?1:-1)}));
+ for(const c of GD.coops){try{c.first=await gdGet(c.files[0].id);c.plain=!isBox(c.first)}catch(e){}}return GD.coops}
 function gdJoinSheet(){const C=GD.coops||[];
  if(!C.length){$('#sheet').innerHTML='<div class="grab"></div><h3>Aucune coopérative trouvée</h3><p style="font-size:14px;color:var(--gris)">Ce compte Google ne contient pas encore de données Grenier. Vérifiez que c\'est bien le Gmail de la coopérative, ou démarrez avec vos données (Réglages).</p><div class="btns"><button class="btn sec" data-a="close">Fermer</button></div>';$('#veil').classList.add('on');return}
  $('#sheet').innerHTML='<div class="grab"></div><h3>Récupérer ma coopérative</h3><p style="font-size:14px;color:var(--gris);margin:4px 0 10px">Les données de l\'exemple seront remplacées par celles de la coopérative.</p>'+(C.length>1?'<label>Coopérative</label><select id="jc">'+C.map((c,i)=>'<option value="'+i+'">'+esc(c.coop)+' ('+c.files.length+' appareil(s))</option>').join('')+'</select>':'<p style="margin:0 0 6px"><b>'+esc(C[0].coop)+'</b> · '+C[0].files.length+' appareil(s)</p>')+
-  '<label>Code d\'accès de la coopérative</label><input id="jk" type="password" autocomplete="current-password"><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" id="jok">Récupérer</button></div>';$('#veil').classList.add('on');
+  (C.some(c=>c.plain)?'<p style="font-size:13.5px;margin:0 0 6px;background:var(--ocre2);padding:10px;border-radius:10px">Ces données viennent d\'une ancienne version et <b>ne sont pas encore protégées</b>. Choisissez maintenant un code d\'accès (6 caractères au minimum) et notez-le : il servira sur tous les téléphones.</p>':'')+'<label>Code d\'accès de la coopérative</label><input id="jk" type="password" autocomplete="new-password"><div class="err" id="err"></div><div class="btns"><button class="btn sec" data-a="close">Annuler</button><button class="btn" id="jok">Récupérer</button></div>';$('#veil').classList.add('on');
  $('#jok').onclick=async()=>{const c=C[$('#jc')?+$('#jc').value:0],code=$('#jk').value,b=$('#jok');b.disabled=true;b.textContent='Récupération…';
-  try{const used=c.files.map(f=>f.app),first=await gdGet(c.files[0].id);if(!isBox(first))throw 'fmt';const o=await unsealCode(first,code);
+  try{const used=c.files.map(f=>f.app),first=c.first||await gdGet(c.files[0].id),legacy=!isBox(first);
+   if(legacy&&code.length<6){$('#err').textContent='Choisissez un code de 6 caractères au minimum';b.disabled=false;b.textContent='Récupérer';return}
+   const o=legacy?JSON.parse(JSON.stringify(first)):await unsealCode(first,code);
    const plan=licCheck(o.params.nom,(o.licence||{}).cle).ok?licCheck(o.params.nom,o.licence.cle).plan:'P',lim=OFFRES[plan].appareils;
    const free=APPS.split('').find(x=>!used.includes(x));if(!free||used.length>=lim){$('#err').textContent='Limite atteinte : la formule '+OFFRES[plan].nom+' permet '+lim+' appareil(s). Libérez un appareil ou changez de formule.';b.disabled=false;b.textContent='Récupérer';return}
    delete o._app;S=Object.assign(empty(),o);S.demo=false;try{localStorage.setItem('grenier_appareil',free)}catch(x){}
-   await vaultSet(code,first.salt);numeros();snap();gdLS('grenier_gd_vu',null);gdLS('grenier_gd_h',null);await persist();closeSheet();actStart();toast('Coopérative récupérée ✓ · cet appareil : '+free);go('home');gdSync(true)}
+   await vaultSet(code,legacy?undefined:first.salt);numeros();snap();
+   const vieux=[];if(legacy){for(const f of c.files){try{const d=f===c.files[0]?first:await gdGet(f.id);if(!isBox(d)){if(f!==c.files[0])fusion(d);vieux.push(f.id)}}catch(x){}}}
+   gdLS('grenier_gd_vu',null);gdLS('grenier_gd_h',null);await persist();closeSheet();actStart();toast('Coopérative récupérée ✓ · cet appareil : '+free);go('home');
+   await gdSync(true);if(vieux.length&&+gdLS('grenier_gd_der')>Date.now()-60000){for(const id of vieux){try{await gdApi('drive/v3/files/'+id,{method:'DELETE'})}catch(x){}}}}
   catch(x){$('#err').textContent='Code incorrect ou données illisibles';b.disabled=false;b.textContent='Récupérer'}}}
 function gdSoon(ms){if(!gdOn()||S.demo||!VAULT.key)return;clearTimeout(GD.timer);GD.timer=setTimeout(()=>gdSync(),ms||20000)}
 const gdHeure=()=>{const t=+gdLS('grenier_gd_der');if(!t)return 'jamais';const d=new Date(t);return (d.toDateString()===new Date().toDateString()?'aujourd\'hui':fd(d))+' à '+String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0')};
